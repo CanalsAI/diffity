@@ -45,10 +45,15 @@ export function getHeadHash(): string {
   return exec('git rev-parse HEAD');
 }
 
+export function getDiffityHome(): string {
+  const override = process.env.DIFFITY_HOME?.trim();
+  return override ? override : join(homedir(), '.diffity');
+}
+
 export function getDiffityDirPath(): string {
   const repoRoot = getRepoRoot();
   const hash = createHash('sha256').update(repoRoot).digest('hex').slice(0, 12);
-  return join(homedir(), '.diffity', hash);
+  return join(getDiffityHome(), hash);
 }
 
 export function getDiffityDir(): string {
