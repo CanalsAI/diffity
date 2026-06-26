@@ -1,8 +1,7 @@
 import type { Command } from 'commander';
 import { rmSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
-import { homedir } from 'node:os';
 import pc from 'picocolors';
+import { getDiffityHome } from '@diffity/git';
 import { readRegistry } from '../registry.js';
 
 export function registerPruneCommand(program: Command) {
@@ -10,7 +9,7 @@ export function registerPruneCommand(program: Command) {
     .command('prune')
     .description('Remove all diffity data (database, sessions) for all repos')
     .action(() => {
-      const dir = join(homedir(), '.diffity');
+      const dir = getDiffityHome();
       if (!existsSync(dir)) {
         console.log(pc.dim('Nothing to prune.'));
         return;
@@ -27,6 +26,6 @@ export function registerPruneCommand(program: Command) {
       }
 
       rmSync(dir, { recursive: true, force: true });
-      console.log(pc.green('Pruned all diffity data (~/.diffity).'));
+      console.log(pc.green(`Pruned all diffity data (${dir}).`));
     });
 }

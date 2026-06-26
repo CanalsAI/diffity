@@ -96,6 +96,23 @@ diffity/
 
 The UI builds into `packages/cli/dist/ui/` so the CLI can serve it as static files. In production, everything ships as a single `diffity` npm package.
 
+## Data Storage
+
+Diffity keeps all persistent state under a single home directory, which defaults to `~/.diffity`:
+
+- `registry.json` / `registry.lock` — the registry of running instances (ports, PIDs).
+- `<repo-hash>/reviews.db` — per-repo SQLite database holding review sessions, comment threads, comments, and tours.
+- `<repo-hash>/current-session` — the active session for that repo.
+
+Set the `DIFFITY_HOME` environment variable to relocate this directory. This is useful when `~` is ephemeral but you want review comments and tours to persist — for example, pointing it at a mounted volume:
+
+```bash
+export DIFFITY_HOME=/mnt/personal/diffity
+diffity              # registry + all per-repo data now live under /mnt/personal/diffity
+```
+
+`diffity prune` removes whichever directory `DIFFITY_HOME` resolves to.
+
 ## Build Commands
 
 ```bash

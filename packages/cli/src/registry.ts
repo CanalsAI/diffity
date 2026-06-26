@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, unlinkSync, existsSync, statSync, mkdirSync } from 'node:fs';
 import { get } from 'node:http';
 import { join } from 'node:path';
-import { homedir } from 'node:os';
+import { getDiffityHome } from '@diffity/git';
 
 export interface RegistryEntry {
   pid: number;
@@ -15,7 +15,7 @@ export interface RegistryEntry {
   version?: string;
 }
 
-const DIFFITY_DIR = join(homedir(), '.diffity');
+const DIFFITY_DIR = getDiffityHome();
 const REGISTRY_PATH = join(DIFFITY_DIR, 'registry.json');
 const LOCK_PATH = join(DIFFITY_DIR, 'registry.lock');
 const LOCK_STALE_MS = 5000;
