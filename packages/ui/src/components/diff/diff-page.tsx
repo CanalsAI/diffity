@@ -6,6 +6,7 @@ import { useInfo } from '../../hooks/use-info';
 import { useTheme } from '../../hooks/use-theme';
 import { useKeyboard } from '../../hooks/use-keyboard';
 import { useReviewThreads } from '../../hooks/use-review-threads';
+import { useViewedFiles } from '../../hooks/use-viewed-files';
 import { useCommentActions } from '../../hooks/use-comment-actions';
 import { Toolbar } from '../layout/toolbar';
 import { DiffView, type DiffViewHandle } from './diff-view';
@@ -19,7 +20,7 @@ import { type ViewMode, getFilePath, getAutoCollapsedPaths } from '../../lib/dif
 import { buildFirstOpenThreadByFile, buildThreadCountsByFile } from '../../lib/comment-navigation';
 import { getHunkHeaders, scrollToElement } from '../../lib/dom-utils';
 import { findMatches } from '../../lib/diff-search';
-import { fetchGitHubDetails, type GitHubDetails } from '../../lib/api';
+import { fetchGitHubDetails, markFileViewed, unmarkFileViewed, type GitHubDetails } from '../../lib/api';
 import type { LineSelection } from '../comments/types';
 import { isThreadResolved } from '../comments/types';
 
@@ -70,6 +71,7 @@ export function DiffPage() {
       .catch(() => {});
   }, [info?.github]);
 
+  const { data: serverViewed } = useViewedFiles(refParam);
   const { data: serverThreads, isFetched: threadsFetched } = useReviewThreads(reviewsEnabled ? sessionId : null);
   const threads = reviewsEnabled && serverThreads ? serverThreads : [];
   const commentActions = useCommentActions(sessionId, reviewsEnabled);
@@ -108,6 +110,22 @@ export function DiffPage() {
     }
     setCollapsedFiles(autoCollapsed);
   }, [diff]);
+
+  useEffect(() => {
+    if (!serverViewed) {
+      return;
+    }
+    setReviewedFiles(new Set(serverViewed));
+    if (serverViewed.length > 0) {
+      setCollapsedFiles((prev) => {
+        const next = new Set(prev);
+        for (const path of serverViewed) {
+          next.add(path);
+        }
+        return next;
+      });
+    }
+  }, [serverViewed]);
 
   useEffect(() => {
     if (filesWithComments.size === 0) {
@@ -154,6 +172,8 @@ export function DiffPage() {
       }
       return next;
     });
+    const persist = reviewed ? markFileViewed : unmarkFileViewed;
+    persist(path, refParam).catch(() => {});
     if (reviewed) {
       setCollapsedFiles((prev) => {
         const next = new Set(prev);
@@ -167,7 +187,7 @@ export function DiffPage() {
         return next;
       });
     }
-  }, []);
+  }, [refParam]);
 
   const getCurrentFilePath = useCallback((): string | null => {
     if (!diff) {
@@ -317,10 +337,12 @@ export function DiffPage() {
 
   const handleRevert = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['diff'] });
+    queryClient.invalidateQueries({ queryKey: ['viewed'] });
   }, [queryClient]);
 
   const handleRefreshDiff = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['diff'] });
+    queryClient.invalidateQueries({ queryKey: ['viewed'] });
     resetStaleness();
   }, [queryClient, resetStaleness]);
 

@@ -3,6 +3,7 @@ import type { Route } from "./+types/diff";
 import { queryClient } from "../lib/query-client";
 import { diffOptions } from "../queries/diff";
 import { repoInfoOptions } from "../queries/info";
+import { viewedOptions } from "../queries/viewed";
 import { DiffPage } from "../components/diff/diff-page";
 import { ErrorPage } from "../components/error-page";
 
@@ -15,6 +16,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   await Promise.all([
     queryClient.ensureQueryData(diffOptions(false, ref)),
     queryClient.ensureQueryData(repoInfoOptions(ref)),
+    queryClient.ensureQueryData(viewedOptions(ref)),
   ]);
 
   return { ref, theme, view };
