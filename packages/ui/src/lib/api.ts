@@ -185,6 +185,36 @@ export function deleteComment(commentId: string): Promise<void> {
   return apiVoid(`/api/comments/${commentId}`, { method: 'DELETE' });
 }
 
+export async function fetchViewedFiles(ref?: string): Promise<string[]> {
+  const res = await fetch(buildUrl('/api/viewed', { ref }));
+  if (!res.ok) {
+    return [];
+  }
+  const json = (await res.json()) as { viewed: string[] };
+  return json.viewed;
+}
+
+export function markFileViewed(filePath: string, ref?: string): Promise<void> {
+  return apiVoid('/api/viewed', {
+    method: 'PUT',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ filePath, ref }),
+    // keepalive lets the request finish even if the user reloads/navigates
+    // right after toggling — otherwise the in-flight fetch is aborted and the
+    // change is silently lost.
+    keepalive: true,
+  });
+}
+
+export function unmarkFileViewed(filePath: string, ref?: string): Promise<void> {
+  // Params go in the query string (no body): the devspaces proxy drops request
+  // bodies from DELETE, so a body-carrying DELETE hangs upstream forever.
+  return apiVoid(buildUrl('/api/viewed', { filePath, ref }), {
+    method: 'DELETE',
+    keepalive: true,
+  });
+}
+
 export function revertFile(filePath: string, isUntracked: boolean): Promise<void> {
   return apiVoid('/api/revert-file', {
     method: 'POST',

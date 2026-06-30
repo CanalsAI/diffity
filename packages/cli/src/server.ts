@@ -46,6 +46,13 @@ import {
 } from '@diffity/github';
 import { findOrCreateSession } from './session.js';
 import { createThread, addReply, getThreadsForSession } from './threads.js';
+import {
+  getViewedRecords,
+  setViewedFile,
+  unsetViewedFile,
+  hashDiffFile,
+  filePathForFile,
+} from './viewed.js';
 import { handleReviewRoute } from './review-routes.js';
 import { handleTourRoute } from './tour-routes.js';
 import { sendJson, sendError, readBody } from './http-utils.js';
@@ -155,6 +162,23 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
       }
     }
     return raw;
+  }
+
+  // Per-file content hash for the current diff, keyed by display path. Built from the
+  // canonical diff (never `-w`) so the "viewed" state survives whitespace toggling and
+  // only resets when a file's actual content changes.
+  function buildViewedHashByPath(ref: string | null): Map<string, string> {
+    const raw = ref ? resolveRef(ref) : getFullDiff(diffArgs);
+    const parsed = parseDiff(raw);
+    const map = new Map<string, string>();
+    for (const file of parsed.files) {
+      map.set(filePathForFile(file), hashDiffFile(file));
+    }
+    return map;
+  }
+
+  function viewedRefKey(ref: string | null): string {
+    return ref || effectiveRef || 'work';
   }
 
   const githubRemote = detectGitHubRemote();
@@ -555,6 +579,52 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
             github: githubRemote,
             editor: editorAvailable,
           });
+          return;
+        }
+
+        if (pathname === '/api/viewed' && req.method === 'GET') {
+          const ref = url.searchParams.get('ref');
+          const hashByPath = buildViewedHashByPath(ref);
+          const records = getViewedRecords(viewedRefKey(ref));
+          const viewed = records
+            .filter((record) => hashByPath.get(record.filePath) === record.contentHash)
+            .map((record) => record.filePath);
+          sendJson(res, { viewed });
+          return;
+        }
+
+        if (pathname === '/api/viewed' && req.method === 'PUT') {
+          try {
+            const body = JSON.parse(await readBody(req));
+            const { filePath: path, ref } = body;
+            if (!path || typeof path !== 'string') {
+              sendError(res, 400, 'Missing filePath');
+              return;
+            }
+            const refParam = typeof ref === 'string' ? ref : null;
+            const hash = buildViewedHashByPath(refParam).get(path);
+            if (hash) {
+              setViewedFile(viewedRefKey(refParam), path, hash);
+            }
+            sendJson(res, { ok: true });
+          } catch (err) {
+            sendError(res, 500, `Failed to mark file viewed: ${err}`);
+          }
+          return;
+        }
+
+        if (pathname === '/api/viewed' && req.method === 'DELETE') {
+          // Params come via the query string, not a body: the devspaces proxy
+          // strips request bodies from DELETE while still forwarding their
+          // Content-Length, which would hang readBody() forever.
+          const path = url.searchParams.get('filePath');
+          if (!path) {
+            sendError(res, 400, 'Missing filePath');
+            return;
+          }
+          const refParam = url.searchParams.get('ref');
+          unsetViewedFile(viewedRefKey(refParam), path);
+          sendJson(res, { ok: true });
           return;
         }
 
