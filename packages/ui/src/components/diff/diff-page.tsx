@@ -19,6 +19,7 @@ import { useDiffStaleness } from '../../hooks/use-diff-staleness';
 import { type ViewMode, getFilePath, getAutoCollapsedPaths } from '../../lib/diff-utils';
 import { buildFirstOpenThreadByFile, buildThreadCountsByFile } from '../../lib/comment-navigation';
 import { getHunkHeaders, scrollToElement } from '../../lib/dom-utils';
+import { findMatches } from '../../lib/diff-search';
 import { fetchGitHubDetails, markFileViewed, unmarkFileViewed, type GitHubDetails } from '../../lib/api';
 import type { LineSelection } from '../comments/types';
 import { isThreadResolved } from '../comments/types';
@@ -45,6 +46,15 @@ export function DiffPage() {
   const diffViewRef = useRef<DiffViewHandle>(null);
   const currentFileIdx = useRef(0);
   const initializedDiffRef = useRef<typeof diff>(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [searchIndex, setSearchIndex] = useState(-1);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearchQuery(searchQuery), 150);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
 
   const reviewsEnabled = !!info?.capabilities?.reviews;
   const sessionId = info?.sessionId ?? null;
@@ -217,6 +227,62 @@ export function DiffPage() {
     scrollToElement(target);
   }, []);
 
+  const searchMatches = useMemo(() => {
+    if (!diff || debouncedSearchQuery.length === 0) {
+      return [];
+    }
+    return findMatches(diff.files, debouncedSearchQuery);
+  }, [diff, debouncedSearchQuery]);
+
+  useEffect(() => {
+    setSearchIndex(searchMatches.length > 0 ? 0 : -1);
+  }, [searchMatches]);
+
+  const currentMatch = searchIndex >= 0 ? searchMatches[searchIndex] : undefined;
+  const currentMatchId = currentMatch?.id ?? null;
+  const searchExpandFile = currentMatch?.filePath ?? null;
+
+  useEffect(() => {
+    if (!currentMatch) {
+      return;
+    }
+    setCollapsedFiles((prev) => {
+      if (!prev.has(currentMatch.filePath)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.delete(currentMatch.filePath);
+      return next;
+    });
+    const frame = requestAnimationFrame(() => {
+      diffViewRef.current?.scrollToLine(currentMatch.fileIndex, currentMatch.lineKey);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [currentMatchId]);
+
+  const focusDiffSearch = useCallback(() => {
+    const input = document.querySelector(
+      'input[placeholder="Search changes..."]',
+    ) as HTMLInputElement | null;
+    if (!input) {
+      return;
+    }
+    input.focus();
+    input.select();
+    const selection = window.getSelection?.()?.toString().trim();
+    if (selection && !selection.includes('\n') && selection.length <= 100) {
+      setSearchQuery(selection);
+    }
+  }, []);
+
+  const goToNextMatch = useCallback(() => {
+    setSearchIndex((i) => (searchMatches.length === 0 ? -1 : (i + 1) % searchMatches.length));
+  }, [searchMatches.length]);
+
+  const goToPrevMatch = useCallback(() => {
+    setSearchIndex((i) => (searchMatches.length === 0 ? -1 : (i - 1 + searchMatches.length) % searchMatches.length));
+  }, [searchMatches.length]);
+
   useKeyboard({
     onNextFile: () => navigateFile(1),
     onPrevFile: () => navigateFile(-1),
@@ -263,6 +329,7 @@ export function DiffPage() {
         input.focus();
       }
     },
+    onFindInDiff: focusDiffSearch,
     onEscape: () => setShowHelp(false),
   });
 
@@ -368,6 +435,12 @@ export function DiffPage() {
         githubDetails={githubDetails}
         sessionId={sessionId}
         onGitHubPulled={() => queryClient.invalidateQueries({ queryKey: ['threads'] })}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        searchMatchCount={searchMatches.length}
+        searchCurrentIndex={searchIndex}
+        onSearchNext={goToNextMatch}
+        onSearchPrev={goToPrevMatch}
       />
       {isStale && <StaleDiffBanner onRefresh={handleRefreshDiff} />}
       <div className="flex flex-1 overflow-hidden">
@@ -402,6 +475,10 @@ export function DiffPage() {
             onAddThread={handleAddThread}
             pendingSelection={pendingSelection}
             onPendingSelectionChange={setPendingSelection}
+            searchMatches={searchMatches}
+            currentSearchMatchId={currentMatchId}
+            searchActive={debouncedSearchQuery.length > 0}
+            searchExpandFile={searchExpandFile}
           />
         ) : null}
       </div>

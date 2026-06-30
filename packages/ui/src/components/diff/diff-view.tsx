@@ -4,7 +4,9 @@ import type { ParsedDiff } from '@diffity/parser';
 import { FileBlock, LARGE_DIFF_LINE_THRESHOLD } from './file-block';
 import { GeneralComments } from '../comments/general-comments';
 import { useHighlighter } from '../../hooks/use-highlighter';
+import { useSearchHighlight } from '../../hooks/use-search-highlight';
 import { type ViewMode, getFilePath } from '../../lib/diff-utils';
+import type { SearchMatch } from '../../lib/diff-search';
 import type { CommentThread, LineSelection } from '../comments/types';
 import type { CommentActions } from '../../hooks/use-comment-actions';
 
@@ -18,6 +20,7 @@ function flashThreadElement(element: Element) {
 export interface DiffViewHandle {
   scrollToFile: (path: string) => void;
   scrollToThread: (threadId: string, filePath: string) => void;
+  scrollToLine: (fileIndex: number, lineKey: string) => void;
 }
 
 const VIRTUALIZER_OVERSCAN = 3;
@@ -47,6 +50,10 @@ interface DiffViewProps {
   onAddThread: CommentActions['addThread'];
   pendingSelection: LineSelection | null;
   onPendingSelectionChange: (selection: LineSelection | null) => void;
+  searchMatches: SearchMatch[];
+  currentSearchMatchId: string | null;
+  searchActive: boolean;
+  searchExpandFile: string | null;
 }
 
 function estimateFileHeight(file: { hunks: { lines: { length: number } }[]; isBinary: boolean }, collapsed: boolean): number {
@@ -73,9 +80,18 @@ export function DiffView(props: DiffViewProps) {
     handle, baseRef, canRevert, onRevert,
     threads, commentsEnabled, commentActions, onAddThread,
     pendingSelection, onPendingSelectionChange,
+    searchMatches, currentSearchMatchId, searchActive, searchExpandFile,
   } = props;
   const { highlight } = useHighlighter();
   const scrollElementRef = useRef<HTMLElement>(null);
+  const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
+
+  useSearchHighlight({
+    scrollElement: scrollEl,
+    matches: searchMatches,
+    currentId: currentSearchMatchId,
+    active: searchActive,
+  });
 
   const highlighters = useMemo(() => {
     const map = new Map<string, (code: string) => ReturnType<typeof highlight>>();
@@ -181,6 +197,18 @@ export function DiffView(props: DiffViewProps) {
         setPendingThreadScroll(threadId);
       }
     },
+    scrollToLine: (fileIndex: number, lineKey: string) => {
+      if (fileIndex < 0 || fileIndex >= diff.files.length) {
+        return;
+      }
+      const path = getFilePath(diff.files[fileIndex]);
+      scrollTargetRef.current = path;
+      virtualizer.scrollToIndex(fileIndex, { align: 'center' });
+      settleScrollToElement(
+        `#file-${CSS.escape(encodeURIComponent(path))} [data-line-key="${lineKey}"]`,
+        'center',
+      );
+    },
   }), [diff.files, virtualizer, settleScrollToElement]);
 
   useEffect(() => {
@@ -253,6 +281,7 @@ export function DiffView(props: DiffViewProps) {
     <main
       ref={(node) => {
         scrollElementRef.current = node;
+        setScrollEl(node);
         if (scrollRef) {
           scrollRef(node);
         }
@@ -299,6 +328,7 @@ export function DiffView(props: DiffViewProps) {
                 onAddThread={onAddThread}
                 pendingSelection={pendingSelection}
                 onPendingSelectionChange={onPendingSelectionChange}
+                forceRenderLargeDiff={searchExpandFile === filePath}
               />
             </div>
           );

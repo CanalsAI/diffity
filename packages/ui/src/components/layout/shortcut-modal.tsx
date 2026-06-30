@@ -28,7 +28,9 @@ const shortcuts = [
   {
     category: 'Other',
     items: [
-      { key: '/', description: 'Focus search' },
+      { key: '/', description: 'Filter files' },
+      { key: '⌘/Ctrl+F', description: 'Search changes' },
+      { key: '⌘/Ctrl+F again', description: 'Native browser find' },
       { key: '?', description: 'Show shortcuts' },
       { key: 'Esc', description: 'Close modal / clear' },
     ],
