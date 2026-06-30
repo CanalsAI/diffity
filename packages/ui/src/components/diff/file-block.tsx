@@ -58,6 +58,7 @@ interface FileBlockProps {
   onPendingSelectionChange: (selection: LineSelection | null) => void;
   highlighted?: boolean;
   onHighlightEnd?: () => void;
+  forceRenderLargeDiff?: boolean;
 }
 
 interface GapExpansion {
@@ -71,7 +72,7 @@ export function FileBlock(props: FileBlockProps) {
   const {
     file, viewMode, collapsed, onToggleCollapse, reviewed, onReviewedChange, highlightLine, baseRef, canRevert, onRevert,
     threads: allThreads, commentsEnabled, commentActions, onAddThread: rawAddThread, pendingSelection, onPendingSelectionChange,
-    highlighted, onHighlightEnd,
+    highlighted, onHighlightEnd, forceRenderLargeDiff,
   } = props;
 
   const totalLines = getTotalLineCount(file);
@@ -466,7 +467,7 @@ export function FileBlock(props: FileBlockProps) {
                 ? `File mode changed from ${file.oldMode} to ${file.newMode}`
                 : 'No content changes'}
             </div>
-          ) : isLargeDiff && !largeDiffExpanded && allFileThreads.length === 0 ? (
+          ) : isLargeDiff && !largeDiffExpanded && !forceRenderLargeDiff && allFileThreads.length === 0 ? (
             <div className="flex items-center justify-center gap-3 py-6 px-4 text-sm text-text-muted">
               <span>Large diff not rendered — {totalLines} lines</span>
               <button

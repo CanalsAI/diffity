@@ -10,6 +10,7 @@ import { KeyboardIcon } from '../icons/keyboard-icon';
 import { GitBranchIcon } from '../icons/git-branch-icon';
 import { GitHubIcon } from '../icons/github-icon';
 import { DiffStats } from '../diff/diff-stats';
+import { DiffSearchBar } from '../diff/diff-search-bar';
 import { GitHubDialog } from './github-dialog';
 import { CommentToolbarActions } from '../comments/comment-toolbar-actions';
 import { OptionsMenu, menuItemClass } from './options-menu';
@@ -37,6 +38,12 @@ interface ToolbarProps {
   githubDetails?: { prNumber: number; prTitle: string; prUrl: string; prCreatedAt: string; headSha: string; commentCount: number } | null;
   sessionId?: string | null;
   onGitHubPulled?: () => void;
+  searchQuery: string;
+  onSearchQueryChange: (query: string) => void;
+  searchMatchCount: number;
+  searchCurrentIndex: number;
+  onSearchNext: () => void;
+  onSearchPrev: () => void;
 }
 
 function extractCodeContext(diff: ParsedDiff | undefined, filePath: string, side: 'old' | 'new', startLine: number, endLine: number): string[] {
@@ -131,6 +138,12 @@ export function Toolbar(props: ToolbarProps) {
     githubDetails,
     sessionId,
     onGitHubPulled,
+    searchQuery,
+    onSearchQueryChange,
+    searchMatchCount,
+    searchCurrentIndex,
+    onSearchNext,
+    onSearchPrev,
   } = props;
   const [showGitHub, setShowGitHub] = useState(false);
 
@@ -173,6 +186,14 @@ export function Toolbar(props: ToolbarProps) {
         )}
       </div>
       <div className="flex items-center gap-2 ml-auto shrink-0">
+        <DiffSearchBar
+          query={searchQuery}
+          onQueryChange={onSearchQueryChange}
+          matchCount={searchMatchCount}
+          currentIndex={searchCurrentIndex}
+          onNext={onSearchNext}
+          onPrev={onSearchPrev}
+        />
         <SegmentedToggle options={viewModeOptions} value={viewMode} onChange={onViewModeChange} />
         <CommentToolbarActions
           threads={threads}

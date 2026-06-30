@@ -172,6 +172,25 @@ dialog {
   animation: flash-thread 1.5s ease-out;
 }
 
+::highlight(diffity-search) {
+  background-color: rgba(255, 200, 0, 0.4);
+  color: inherit;
+}
+
+::highlight(diffity-search-current) {
+  background-color: #ff9632;
+  color: #1f2328;
+}
+
+[data-theme='dark'] ::highlight(diffity-search) {
+  background-color: rgba(255, 200, 0, 0.3);
+}
+
+[data-theme='dark'] ::highlight(diffity-search-current) {
+  background-color: #f59e0b;
+  color: #171717;
+}
+
 #nprogress .bar {
   background: var(--color-accent) !important;
 }

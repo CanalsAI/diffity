@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import type { DiffHunk, DiffLine as DiffLineType } from '@diffity/parser';
 import { cn } from '../../lib/cn';
 import { getLineBg, getChangeGroups } from '../../lib/diff-utils';
+import { getLineKey } from '../../lib/diff-search';
 import { renderContent } from '../../lib/render-content';
 import type { SyntaxToken } from '../../lib/syntax-token';
 import type { CommentThread as CommentThreadType, CommentAuthor, CommentSide, LineSelection, LineRenderProps } from '../comments/types';
@@ -145,6 +146,7 @@ function SplitCell(props: {
       />
       <td
         className={cn('px-3 whitespace-pre-wrap break-all border-r border-border-muted align-top', isSelected ? 'bg-diff-comment-bg' : contentBgClass)}
+        data-line-key={getLineKey(line)}
         onMouseEnter={() => setContentHovered(true)}
         onMouseLeave={() => setContentHovered(false)}
       >

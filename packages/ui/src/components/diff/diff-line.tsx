@@ -1,6 +1,7 @@
 import type { DiffLine as DiffLineType } from '@diffity/parser';
 import { cn } from '../../lib/cn';
 import { getLineBg } from '../../lib/diff-utils';
+import { getLineKey } from '../../lib/diff-search';
 import { renderContent } from '../../lib/render-content';
 import type { SyntaxToken } from '../../lib/syntax-token';
 import { CommentLineNumber } from '../comments/comment-line-number';
@@ -70,7 +71,7 @@ export function DiffLine(props: DiffLineProps) {
       <td className={cn('w-5 min-w-5 px-1 text-center select-none align-top', getPrefixColor(line.type), isSelected && 'bg-diff-comment-bg')}>
         {getPrefix(line.type)}
       </td>
-      <td className={cn('px-3 whitespace-pre-wrap break-all', isSelected && 'bg-diff-comment-bg')}>
+      <td className={cn('px-3 whitespace-pre-wrap break-all', isSelected && 'bg-diff-comment-bg')} data-line-key={getLineKey(line)}>
         <span className="inline">{renderContent(line, syntaxTokens)}</span>
       </td>
     </tr>

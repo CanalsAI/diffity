@@ -13,6 +13,7 @@ interface KeyboardActions {
   onSplitView: () => void;
   onShowHelp: () => void;
   onFocusSearch: () => void;
+  onFindInDiff: () => void;
   onEscape: () => void;
 }
 
@@ -40,6 +41,18 @@ export function useKeyboard(actions: KeyboardActions) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F') && !e.shiftKey) {
+        // Escape hatch: if the in-app search is already focused, let this
+        // second press through to the browser's native find. Otherwise focus
+        // our search (native find can't be opened from JS).
+        const active = document.activeElement as HTMLElement | null;
+        if (active?.getAttribute('placeholder') === 'Search changes...') {
+          return;
+        }
+        e.preventDefault();
+        actionsRef.current.onFindInDiff();
+        return;
+      }
       if (e.key === '/' && !isInputFocused()) {
         e.preventDefault();
         actionsRef.current.onFocusSearch();
