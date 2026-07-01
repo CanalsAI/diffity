@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useDiff } from '../../hooks/use-diff';
 import { useInfo } from '../../hooks/use-info';
 import { useTheme } from '../../hooks/use-theme';
+import { useAutoCollapse } from '../../hooks/use-auto-collapse';
 import { useKeyboard } from '../../hooks/use-keyboard';
 import { useReviewThreads } from '../../hooks/use-review-threads';
 import { useViewedFiles } from '../../hooks/use-viewed-files';
@@ -35,6 +36,7 @@ export function DiffPage() {
   const [hideWhitespace, setHideWhitespace] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const { theme, toggleTheme } = useTheme(initialTheme);
+  const { autoCollapse, toggleAutoCollapse } = useAutoCollapse();
   const { data: diff, error } = useDiff(hideWhitespace, refParam);
   const { data: info } = useInfo(refParam);
   const [activeFile, setActiveFile] = useState<string | null>(null);
@@ -46,6 +48,7 @@ export function DiffPage() {
   const diffViewRef = useRef<DiffViewHandle>(null);
   const currentFileIdx = useRef(0);
   const initializedDiffRef = useRef<typeof diff>(null);
+  const initializedAutoCollapseRef = useRef<boolean | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -92,12 +95,16 @@ export function DiffPage() {
   }, [commentActions]);
 
   useEffect(() => {
-    if (!diff || diff === initializedDiffRef.current) {
+    if (!diff) {
+      return;
+    }
+    if (diff === initializedDiffRef.current && autoCollapse === initializedAutoCollapseRef.current) {
       return;
     }
     initializedDiffRef.current = diff;
+    initializedAutoCollapseRef.current = autoCollapse;
 
-    const autoCollapsed = getAutoCollapsedPaths(diff.files);
+    const autoCollapsed = autoCollapse ? getAutoCollapsedPaths(diff.files) : new Set<string>();
     for (const path of filesWithComments) {
       autoCollapsed.delete(path);
     }
@@ -109,7 +116,7 @@ export function DiffPage() {
       }
     }
     setCollapsedFiles(autoCollapsed);
-  }, [diff]);
+  }, [diff, autoCollapse]);
 
   useEffect(() => {
     if (!serverViewed) {
@@ -423,6 +430,8 @@ export function DiffPage() {
         onHideWhitespaceChange={setHideWhitespace}
         theme={theme}
         onToggleTheme={toggleTheme}
+        autoCollapse={autoCollapse}
+        onToggleAutoCollapse={toggleAutoCollapse}
         onShowHelp={() => setShowHelp(true)}
         diff={diff || undefined}
         diffRef={refParam}
