@@ -6,6 +6,8 @@ import { SplitViewIcon } from '../icons/split-view-icon';
 import { SegmentedToggle } from '../ui/segmented-toggle';
 import { EyeIcon } from '../icons/eye-icon';
 import { EyeOffIcon } from '../icons/eye-off-icon';
+import { CollapseAllIcon } from '../icons/collapse-all-icon';
+import { ExpandAllIcon } from '../icons/expand-all-icon';
 import { KeyboardIcon } from '../icons/keyboard-icon';
 import { GitBranchIcon } from '../icons/git-branch-icon';
 import { GitHubIcon } from '../icons/github-icon';
@@ -26,6 +28,8 @@ interface ToolbarProps {
   onHideWhitespaceChange: (hide: boolean) => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  autoCollapse: boolean;
+  onToggleAutoCollapse: () => void;
   onShowHelp: () => void;
   diff?: ParsedDiff;
   diffRef?: string;
@@ -126,6 +130,8 @@ export function Toolbar(props: ToolbarProps) {
     onHideWhitespaceChange,
     theme,
     onToggleTheme,
+    autoCollapse,
+    onToggleAutoCollapse,
     onShowHelp,
     diff,
     diffRef,
@@ -216,6 +222,17 @@ export function Toolbar(props: ToolbarProps) {
                 {hideWhitespace ? <EyeOffIcon className="w-3.5 h-3.5" /> : <EyeIcon className="w-3.5 h-3.5" />}
                 {hideWhitespace ? 'Show whitespace' : 'Hide whitespace'}
                 {hideWhitespace && <span className="ml-auto text-accent text-[10px]">On</span>}
+              </button>
+              <button
+                className={menuItemClass}
+                onClick={() => {
+                  onToggleAutoCollapse();
+                  close();
+                }}
+              >
+                {autoCollapse ? <ExpandAllIcon className="w-3.5 h-3.5" /> : <CollapseAllIcon className="w-3.5 h-3.5" />}
+                Auto-collapse files
+                {autoCollapse && <span className="ml-auto text-accent text-[10px]">On</span>}
               </button>
               <button
                 className={menuItemClass}
