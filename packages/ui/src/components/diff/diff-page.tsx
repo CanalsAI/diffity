@@ -169,7 +169,7 @@ export function DiffPage() {
     });
   }, []);
 
-  const handleReviewedChange = useCallback((path: string, reviewed: boolean) => {
+  const handleReviewedChange = useCallback((path: string, reviewed: boolean, reanchor = true) => {
     setReviewedFiles((prev) => {
       const next = new Set(prev);
       if (reviewed) {
@@ -182,11 +182,47 @@ export function DiffPage() {
     const persist = reviewed ? markFileViewed : unmarkFileViewed;
     persist(path, refParam).catch(() => {});
     if (reviewed) {
+      // Collapsing a file removes its body height. The virtualizer compensates
+      // by subtracting the whole removed height from the scroll offset — even
+      // the part that was below the fold — which yanks the view upward (a big
+      // jump for a large file). Capture the file's top before collapsing and
+      // pin the scroll to it so the collapsed header stays put at the top.
+      const container = mainRef.current;
+      let pinTop: number | null = null;
+      if (reanchor && container) {
+        const fileEl = container.ownerDocument.getElementById(`file-${encodeURIComponent(path)}`);
+        if (fileEl) {
+          const offsetFromTop = fileEl.getBoundingClientRect().top - container.getBoundingClientRect().top;
+          // Only pin when the file extends above the viewport top — that's the
+          // case where collapsing yanks the view upward. A file sitting fully
+          // below the top collapses in place with no jump, so leave it alone.
+          if (offsetFromTop <= 0) {
+            pinTop = Math.max(0, container.scrollTop + offsetFromTop);
+          }
+        }
+      }
       setCollapsedFiles((prev) => {
         const next = new Set(prev);
         next.add(path);
         return next;
       });
+      if (container && pinTop !== null) {
+        const target = pinTop;
+        // The over-compensation is always upward (below target), so only correct
+        // upward drift — this leaves the user free to scroll down immediately.
+        const pin = () => { if (container.scrollTop < target) container.scrollTop = target; };
+        // The virtualizer compensates for the collapsed height by scrolling up.
+        // Snap back on that scroll event (fired before paint) to avoid a visible
+        // flash, and re-assert over the next frames as a safety net.
+        const onScroll = () => pin();
+        container.addEventListener('scroll', onScroll);
+        pin();
+        requestAnimationFrame(() => { pin(); requestAnimationFrame(pin); });
+        setTimeout(() => {
+          pin();
+          container.removeEventListener('scroll', onScroll);
+        }, 200);
+      }
     } else {
       setCollapsedFiles((prev) => {
         const next = new Set(prev);
@@ -320,7 +356,7 @@ export function DiffPage() {
         return;
       }
       const wasReviewed = reviewedFiles.has(path);
-      handleReviewedChange(path, !wasReviewed);
+      handleReviewedChange(path, !wasReviewed, false);
       if (!wasReviewed) {
         navigateFile(1);
       }
