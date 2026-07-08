@@ -1,6 +1,11 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import { ChevronUpIcon } from '../icons/chevron-up-icon';
 import { SearchIcon } from '../icons/search-icon';
 import { XIcon } from '../icons/x-icon';
+
+/** Base width (matches `w-64`) and the cap the input is allowed to grow to. */
+const MIN_WIDTH = 256;
+const MAX_WIDTH = 512;
 
 interface DiffSearchBarProps {
   query: string;
@@ -37,16 +42,37 @@ export function DiffSearchBar(props: DiffSearchBarProps) {
       ? '0/0'
       : `${currentIndex + 1}/${matchCount}`;
 
+  // Grow the input to fit the query. A hidden mirror measures the text width
+  // with identical typography; the input's left icon + right controls padding
+  // (pl-7 + pr-16 = 5.75rem = 92px) is added on top, then clamped.
+  const mirrorRef = useRef<HTMLSpanElement>(null);
+  const [width, setWidth] = useState(MIN_WIDTH);
+
+  useLayoutEffect(() => {
+    const mirror = mirrorRef.current;
+    if (!mirror) return;
+    const measured = Math.ceil(mirror.getBoundingClientRect().width) + 92;
+    setWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, measured)));
+  }, [query]);
+
   return (
     <div className="relative flex items-center h-7">
       <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted pointer-events-none" />
+      <span
+        ref={mirrorRef}
+        aria-hidden="true"
+        className="absolute invisible whitespace-pre text-xs"
+      >
+        {query || 'Search changes...'}
+      </span>
       <input
         type="text"
         value={query}
         placeholder="Search changes..."
         onChange={(e) => onQueryChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        className="w-64 h-7 pl-7 pr-16 border border-border rounded-md bg-bg text-xs outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 placeholder:text-text-muted"
+        style={{ width }}
+        className="h-7 pl-7 pr-16 border border-border rounded-md bg-bg text-xs outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 placeholder:text-text-muted"
       />
       <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
         {hasQuery && (
