@@ -18,6 +18,7 @@ import { CheckCircleIcon } from '../icons/check-circle-icon';
 import { PageLoader } from '../layout/skeleton';
 import { useDiffStaleness } from '../../hooks/use-diff-staleness';
 import { type ViewMode, getFilePath, getAutoCollapsedPaths } from '../../lib/diff-utils';
+import { sortFilesByTree } from '../../lib/file-tree';
 import { buildFirstOpenThreadByFile, buildThreadCountsByFile } from '../../lib/comment-navigation';
 import { getHunkHeaders, scrollToElement } from '../../lib/dom-utils';
 import { findMatches } from '../../lib/diff-search';
@@ -37,7 +38,13 @@ export function DiffPage() {
   const [showHelp, setShowHelp] = useState(false);
   const { theme, toggleTheme } = useTheme(initialTheme);
   const { autoCollapse, toggleAutoCollapse } = useAutoCollapse();
-  const { data: diff, error } = useDiff(hideWhitespace, refParam);
+  const { data: rawDiff, error } = useDiff(hideWhitespace, refParam);
+  const diff = useMemo(() => {
+    if (!rawDiff) {
+      return rawDiff;
+    }
+    return { ...rawDiff, files: sortFilesByTree(rawDiff.files) };
+  }, [rawDiff]);
   const { data: info } = useInfo(refParam);
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [reviewedFiles, setReviewedFiles] = useState<Set<string>>(new Set());
