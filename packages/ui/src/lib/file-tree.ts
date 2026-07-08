@@ -152,6 +152,28 @@ export function filterTreeToPaths(nodes: TreeNode[], allowedPaths: Set<string>):
   return result;
 }
 
+export function flattenTreeFiles(nodes: TreeNode[]): FileNode[] {
+  const files: FileNode[] = [];
+  for (const node of nodes) {
+    if (node.type === 'file') {
+      files.push(node);
+    } else {
+      files.push(...flattenTreeFiles(node.children));
+    }
+  }
+  return files;
+}
+
+// Returns the diff files in the same order the sidebar tree displays them
+// (directories first, then alphabetical), so the right-hand diff content
+// matches the left-hand file tree.
+export function sortFilesByTree(files: DiffFile[]): DiffFile[] {
+  const tree = sortTree(collapseSingleChildDirs(buildFileTree(files)));
+  return flattenTreeFiles(tree)
+    .map(node => node.file)
+    .filter((file): file is DiffFile => file !== undefined);
+}
+
 export function collectAllDirPaths(nodes: TreeNode[]): string[] {
   const paths: string[] = [];
   for (const node of nodes) {
