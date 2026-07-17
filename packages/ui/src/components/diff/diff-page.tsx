@@ -50,6 +50,8 @@ export function DiffPage() {
   const [reviewedFiles, setReviewedFiles] = useState<Set<string>>(new Set());
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
   const manuallyToggledRef = useRef<Set<string>>(new Set());
+  const prevFilesWithCommentsRef = useRef<Set<string>>(new Set());
+  const hasSeededCommentsRef = useRef(false);
   const [pendingSelection, setPendingSelection] = useState<LineSelection | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
   const diffViewRef = useRef<DiffViewHandle>(null);
@@ -142,21 +144,47 @@ export function DiffPage() {
   }, [serverViewed]);
 
   useEffect(() => {
-    if (filesWithComments.size === 0) {
+    // Expand a file to surface its comments only when it *newly* enters the
+    // commented set — never re-expand every commented file on each change, so
+    // commenting on one file doesn't re-open others the user had collapsed.
+    //
+    // Viewed files are the wrinkle. Comments that already existed when the diff
+    // first loaded must not pop open a file the user marked viewed (that's what
+    // "viewed" means, and it must hold whichever of the viewed/threads queries
+    // resolves first). But a comment that *arrives* later — e.g. from an AI
+    // review dropping feedback while you watch — should re-surface its file even
+    // if viewed. So skip viewed files only on the initial seed of the set.
+    const prev = prevFilesWithCommentsRef.current;
+    const initialSeed = !hasSeededCommentsRef.current;
+    const newlyCommented: string[] = [];
+    for (const path of filesWithComments) {
+      if (prev.has(path)) {
+        continue;
+      }
+      if (initialSeed && reviewedFiles.has(path)) {
+        continue;
+      }
+      newlyCommented.push(path);
+    }
+    prevFilesWithCommentsRef.current = filesWithComments;
+    if (threadsFetched) {
+      hasSeededCommentsRef.current = true;
+    }
+    if (newlyCommented.length === 0) {
       return;
     }
-    setCollapsedFiles((prev) => {
+    setCollapsedFiles((prevCollapsed) => {
       let changed = false;
-      const next = new Set(prev);
-      for (const path of filesWithComments) {
+      const next = new Set(prevCollapsed);
+      for (const path of newlyCommented) {
         if (next.has(path)) {
           next.delete(path);
           changed = true;
         }
       }
-      return changed ? next : prev;
+      return changed ? next : prevCollapsed;
     });
-  }, [filesWithComments]);
+  }, [filesWithComments, reviewedFiles, threadsFetched]);
 
   const handleToggleCollapse = useCallback((path: string) => {
     const toggled = manuallyToggledRef.current;
