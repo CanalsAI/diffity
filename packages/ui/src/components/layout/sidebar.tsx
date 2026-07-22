@@ -16,6 +16,7 @@ interface SidebarProps {
   commentCountsByFile: Map<string, number>;
   onFileClick: (path: string) => void;
   onCommentedFileClick: (path: string) => void;
+  onReviewedChangeMany: (paths: string[], reviewed: boolean) => void;
 }
 
 export function Sidebar(props: SidebarProps) {
@@ -26,6 +27,7 @@ export function Sidebar(props: SidebarProps) {
     commentCountsByFile,
     onFileClick,
     onCommentedFileClick,
+    onReviewedChangeMany,
   } = props;
   const fileTreeRef = useRef<FileTreeHandle>(null);
   const [search, setSearch] = useState('');
@@ -162,6 +164,7 @@ export function Sidebar(props: SidebarProps) {
         commentCountsByFile={commentCountsByFile}
         commentedFilesOnly={commentedFilesOnly}
         onFileClick={handleTreeFileClick}
+        onReviewedChangeMany={onReviewedChangeMany}
         onExpandedStateChange={setAllExpanded}
       />
     </aside>

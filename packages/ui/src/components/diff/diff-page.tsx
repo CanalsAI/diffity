@@ -267,6 +267,38 @@ export function DiffPage() {
     }
   }, [refParam]);
 
+  const handleReviewedChangeMany = useCallback((paths: string[], reviewed: boolean) => {
+    if (paths.length === 0) {
+      return;
+    }
+    setReviewedFiles((prev) => {
+      const next = new Set(prev);
+      for (const path of paths) {
+        if (reviewed) {
+          next.add(path);
+        } else {
+          next.delete(path);
+        }
+      }
+      return next;
+    });
+    const persist = reviewed ? markFileViewed : unmarkFileViewed;
+    for (const path of paths) {
+      persist(path, refParam).catch(() => {});
+    }
+    setCollapsedFiles((prev) => {
+      const next = new Set(prev);
+      for (const path of paths) {
+        if (reviewed) {
+          next.add(path);
+        } else {
+          next.delete(path);
+        }
+      }
+      return next;
+    });
+  }, [refParam]);
+
   const getCurrentFilePath = useCallback((): string | null => {
     if (!diff) {
       return null;
@@ -531,6 +563,7 @@ export function DiffPage() {
           commentCountsByFile={commentCountsByFile}
           onFileClick={handleSidebarFileClick}
           onCommentedFileClick={handleSidebarCommentedFileClick}
+          onReviewedChangeMany={handleReviewedChangeMany}
         />
         {diff ? (
           <DiffView
