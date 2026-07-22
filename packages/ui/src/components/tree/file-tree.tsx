@@ -18,6 +18,7 @@ interface FileTreeProps {
   commentCountsByFile: Map<string, number>;
   commentedFilesOnly: boolean;
   onFileClick: (path: string) => void;
+  onReviewedChangeMany?: (paths: string[], reviewed: boolean) => void;
   onExpandedStateChange?: (allExpanded: boolean) => void;
 }
 
@@ -35,6 +36,7 @@ export const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileT
     commentCountsByFile,
     commentedFilesOnly,
     onFileClick,
+    onReviewedChangeMany,
     onExpandedStateChange,
   } = props;
 
@@ -124,6 +126,7 @@ export const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileT
             expandedDirs={effectiveExpandedDirs}
             onToggleDir={handleToggleDir}
             onFileClick={onFileClick}
+            onReviewedChangeMany={onReviewedChangeMany}
           />
         ))
       )}
