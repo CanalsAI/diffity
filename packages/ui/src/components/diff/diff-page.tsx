@@ -21,7 +21,7 @@ import { type ViewMode, getFilePath, getAutoCollapsedPaths } from '../../lib/dif
 import { sortFilesByTree } from '../../lib/file-tree';
 import { buildFirstOpenThreadByFile, buildThreadCountsByFile } from '../../lib/comment-navigation';
 import { getHunkHeaders, scrollToElement } from '../../lib/dom-utils';
-import { findMatches } from '../../lib/diff-search';
+import { findMatches, focusSearchInput } from '../../lib/diff-search';
 import { fetchGitHubDetails, markFileViewed, unmarkFileViewed, type GitHubDetails } from '../../lib/api';
 import type { LineSelection } from '../comments/types';
 import { isThreadResolved } from '../comments/types';
@@ -377,10 +377,8 @@ export function DiffPage() {
     if (!input) {
       return;
     }
-    input.focus();
-    input.select();
-    const selection = window.getSelection?.()?.toString().trim();
-    if (selection && !selection.includes('\n') && selection.length <= 100) {
+    const selection = focusSearchInput(input);
+    if (selection) {
       setSearchQuery(selection);
     }
   }, []);

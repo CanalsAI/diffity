@@ -16,6 +16,23 @@ export interface SearchMatch {
   end: number;
 }
 
+interface SearchInput {
+  focus: () => void;
+  select: () => void;
+}
+
+export function focusSearchInput(
+  input: SearchInput,
+  getSelection = () => window.getSelection?.()?.toString(),
+): string | null {
+  const selection = getSelection()?.trim();
+  input.focus();
+  input.select();
+  return selection && !selection.includes('\n') && selection.length <= 100
+    ? selection
+    : null;
+}
+
 /**
  * Stable identifier for a diff line's rendered content cell, scoped to its
  * file. Both the unified and split renderers tag their content `<td>` with this
