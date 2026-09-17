@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { DiffFile, DiffLine } from '@diffity/parser';
-import { findMatches, getLineKey } from '../src/lib/diff-search';
+import { findMatches, focusSearchInput, getLineKey } from '../src/lib/diff-search';
 
 function line(type: DiffLine['type'], content: string, oldNum: number | null, newNum: number | null): DiffLine {
   return { type, content, oldLineNumber: oldNum, newLineNumber: newNum };
@@ -23,6 +23,25 @@ describe('getLineKey', () => {
     expect(getLineKey(line('context', 'x', 3, 4))).toBe('context:3:4');
     expect(getLineKey(line('add', 'x', null, 7))).toBe('add::7');
     expect(getLineKey(line('delete', 'x', 5, null))).toBe('delete:5:');
+  });
+});
+
+describe('focusSearchInput', () => {
+  it('captures the page selection before focusing the search input', () => {
+    let pageSelection = 'selectedCode';
+    let focused = false;
+    let selected = false;
+    const input = {
+      focus: () => {
+        focused = true;
+        pageSelection = '';
+      },
+      select: () => { selected = true; },
+    };
+
+    expect(focusSearchInput(input, () => pageSelection)).toBe('selectedCode');
+    expect(focused).toBe(true);
+    expect(selected).toBe(true);
   });
 });
 
