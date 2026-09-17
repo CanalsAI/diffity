@@ -135,12 +135,19 @@ const ALL_LANGS: BundledLanguage[] = [
   ]),
 ];
 
+// Tokens the stock theme renders too dim to read once a diff row tints the
+// background behind them.
+const DARK_COLOR_REPLACEMENTS: Record<string, string> = {
+  '#8b949e': '#a5b0bb',
+  '#ff7b72': '#ff8985',
+};
+
 let highlighterPromise: Promise<Highlighter> | null = null;
 
 function getHighlighter(): Promise<Highlighter> {
   if (!highlighterPromise) {
     highlighterPromise = createHighlighter({
-      themes: ['github-light', 'github-dark'],
+      themes: ['github-light', 'github-dark-default'],
       langs: ALL_LANGS,
     });
   }
@@ -168,12 +175,13 @@ export function useHighlighter() {
       return null;
     }
 
-    const shikiTheme = theme === 'dark' ? 'github-dark' : 'github-light';
+    const shikiTheme = theme === 'dark' ? 'github-dark-default' : 'github-light';
 
     try {
       const result = highlighter.codeToTokens(code, {
         lang,
         theme: shikiTheme,
+        colorReplacements: theme === 'dark' ? DARK_COLOR_REPLACEMENTS : undefined,
       });
 
       return result.tokens.map(line => ({
