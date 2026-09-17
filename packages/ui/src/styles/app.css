@@ -40,44 +40,49 @@
   --color-hover: rgba(208, 215, 222, 0.32);
   --color-active: rgba(208, 215, 222, 0.48);
 
+  --diff-row-hover: 0.97;
+
   --shadow-sticky: 0 1px 2px rgba(27, 31, 36, 0.08);
   --shadow-md: 0 2px 8px rgba(140, 149, 159, 0.12);
 }
 
 [data-theme='dark'] {
-  --color-bg: #171717;
-  --color-bg-secondary: #1a1a1a;
-  --color-bg-tertiary: #262626;
-  --color-border: #262626;
-  --color-border-muted: #1f1f1f;
+  --color-bg: #15171a;
+  --color-bg-secondary: #1b1e22;
+  --color-bg-tertiary: #23282e;
+  --color-border: #333a42;
+  --color-border-muted: #272c32;
 
-  --color-text: #e5e5e5;
-  --color-text-secondary: #a3a3a3;
-  --color-text-muted: #737373;
+  --color-text: #e6edf3;
+  --color-text-secondary: #b0bac4;
+  --color-text-muted: #8d97a2;
 
-  --color-diff-add-bg: rgba(34, 197, 94, 0.1);
-  --color-diff-add-line: rgba(34, 197, 94, 0.18);
-  --color-diff-add-word: rgba(34, 197, 94, 0.35);
-  --color-diff-del-bg: rgba(239, 68, 68, 0.1);
-  --color-diff-del-line: rgba(239, 68, 68, 0.18);
-  --color-diff-del-word: rgba(239, 68, 68, 0.35);
-  --color-diff-hunk-bg: rgba(96, 165, 250, 0.1);
-  --color-diff-hunk-text: #60a5fa;
-  --color-diff-expanded-bg: rgba(96, 165, 250, 0.05);
-  --color-diff-expanded-gutter: rgba(96, 165, 250, 0.08);
-  --color-diff-comment-bg: rgba(234, 179, 8, 0.1);
-  --color-diff-comment-gutter: rgba(234, 179, 8, 0.3);
+  --color-diff-add-bg: rgba(63, 185, 80, 0.13);
+  --color-diff-add-line: rgba(63, 185, 80, 0.13);
+  --color-diff-add-word: rgba(63, 185, 80, 0.2);
+  --color-diff-del-bg: rgba(248, 81, 73, 0.17);
+  --color-diff-del-line: rgba(248, 81, 73, 0.17);
+  --color-diff-del-word: rgba(248, 81, 73, 0.25);
+  --color-diff-hunk-bg: rgba(88, 166, 255, 0.12);
+  --color-diff-hunk-text: #7cc4ff;
+  --color-diff-expanded-bg: rgba(88, 166, 255, 0.05);
+  --color-diff-expanded-gutter: rgba(88, 166, 255, 0.09);
+  --color-diff-comment-bg: rgba(227, 179, 65, 0.12);
+  --color-diff-comment-gutter: rgba(227, 179, 65, 0.42);
 
-  --color-accent: #60a5fa;
-  --color-accent-hover: #93c5fd;
+  --color-accent: #6cb6ff;
+  --color-accent-hover: #a2d0ff;
 
-  --color-added: #4ade80;
-  --color-deleted: #f87171;
-  --color-modified: #facc15;
-  --color-renamed: #60a5fa;
+  --color-added: #57d364;
+  --color-deleted: #ff7b72;
+  --color-modified: #e3b341;
+  --color-renamed: #6cb6ff;
 
-  --color-hover: rgba(161, 161, 170, 0.1);
-  --color-active: rgba(161, 161, 170, 0.18);
+  --color-hover: rgba(177, 186, 196, 0.08);
+  --color-active: rgba(177, 186, 196, 0.16);
+
+  /* Darkening a dark row hides the hover, so lift it instead. */
+  --diff-row-hover: 1.25;
 
   --shadow-sticky: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.5);
@@ -183,12 +188,12 @@ dialog {
 }
 
 [data-theme='dark'] ::highlight(diffity-search) {
-  background-color: rgba(255, 200, 0, 0.3);
+  background-color: rgba(255, 200, 0, 0.25);
 }
 
 [data-theme='dark'] ::highlight(diffity-search-current) {
   background-color: #f59e0b;
-  color: #171717;
+  color: #15171a;
 }
 
 #nprogress .bar {
@@ -382,6 +387,10 @@ dialog {
 .gh-md-frontmatter th + th,
 .gh-md-frontmatter td + td {
   border-left: 1px solid var(--color-border);
+}
+
+.diff-row-hover:hover {
+  filter: brightness(var(--diff-row-hover));
 }
 
 .diff-empty-cell {
