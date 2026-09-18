@@ -14,7 +14,7 @@ interface KeyboardActions {
   onShowHelp: () => void;
   onFocusSearch: () => void;
   onFindInDiff: () => void;
-  onEscape: () => void;
+  onEscape: (event: KeyboardEvent) => void;
 }
 
 const HOTKEY_OPTIONS = { preventDefault: true };

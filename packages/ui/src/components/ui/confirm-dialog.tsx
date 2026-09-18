@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useModalEscape } from '../../hooks/use-modal-escape';
 
 interface ConfirmDialogProps {
   title: string;
@@ -14,14 +15,8 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
 
   useEffect(() => {
     cancelRef.current?.focus();
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onCancel();
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [onCancel]);
+  }, []);
+  useModalEscape(onCancel);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onCancel}>

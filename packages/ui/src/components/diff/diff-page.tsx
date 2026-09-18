@@ -22,6 +22,7 @@ import { sortFilesByTree } from '../../lib/file-tree';
 import { buildFirstOpenThreadByFile, buildThreadCountsByFile } from '../../lib/comment-navigation';
 import { getHunkHeaders, scrollToElement } from '../../lib/dom-utils';
 import { findMatches, focusSearchInput } from '../../lib/diff-search';
+import { requestHostClose, shouldRequestHostClose } from '../../lib/embedding';
 import { fetchGitHubDetails, markFileViewed, unmarkFileViewed, type GitHubDetails } from '../../lib/api';
 import type { LineSelection } from '../comments/types';
 import { isThreadResolved } from '../comments/types';
@@ -438,7 +439,15 @@ export function DiffPage() {
       }
     },
     onFindInDiff: focusDiffSearch,
-    onEscape: () => setShowHelp(false),
+    onEscape: (event) => {
+      if (showHelp) {
+        setShowHelp(false);
+        return;
+      }
+      if (shouldRequestHostClose(event.defaultPrevented, !!document.querySelector('dialog[open]'))) {
+        requestHostClose();
+      }
+    },
   });
 
   const queryClient = useQueryClient();
