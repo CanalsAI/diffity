@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { XIcon } from '../icons/x-icon';
 import { pushCommentsToGitHub, pullCommentsFromGitHub, type GitHubDetails, type PrCommentPayload } from '../../lib/api';
 import type { CommentThread } from '../comments/types';
 import { GENERAL_THREAD_FILE_PATH, isThreadResolved } from '../comments/types';
+import { useModalEscape } from '../../hooks/use-modal-escape';
 
 dayjs.extend(relativeTime);
 
@@ -33,15 +34,7 @@ export function GitHubDialog(props: GitHubDialogProps) {
   const multiCommentCount = unresolvedFileThreads.length - pushableThreads.length;
   const localCount = unresolvedFileThreads.length;
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [onClose]);
+  useModalEscape(onClose);
 
   const handlePush = async () => {
     if (pushableThreads.length === 0) {
