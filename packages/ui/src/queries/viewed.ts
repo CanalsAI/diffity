@@ -5,5 +5,6 @@ export function viewedOptions(ref?: string) {
   return queryOptions({
     queryKey: ['viewed', ref ?? null],
     queryFn: () => fetchViewedFiles(ref),
+    refetchOnReconnect: false,
   });
 }

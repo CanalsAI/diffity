@@ -85,6 +85,15 @@ export function fetchDiff(hideWhitespace: boolean, ref?: string): Promise<Parsed
   }));
 }
 
+export interface DiffSummary {
+  fileCount: number;
+  threshold: number;
+}
+
+export function fetchDiffSummary(ref?: string): Promise<DiffSummary> {
+  return apiFetch(buildUrl('/api/diff/summary', { ref }));
+}
+
 export async function fetchDiffFingerprint(ref?: string): Promise<string> {
   const json = await apiFetch<{ fingerprint: string }>(buildUrl('/api/diff-fingerprint', { ref }));
   return json.fingerprint;

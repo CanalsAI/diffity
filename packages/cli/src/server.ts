@@ -12,6 +12,7 @@ import { dirname } from 'node:path';
 import { parseDiff, type ParsedDiff } from '@diffity/parser';
 import {
   getDiff,
+  getDiffFiles,
   getDiffStatForRef,
   getDiffStat,
   getUntrackedFiles,
@@ -62,6 +63,7 @@ import {
 } from './registry.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const LARGE_DIFF_FILE_THRESHOLD = 500;
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html',
@@ -336,6 +338,13 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
             const args = diffArgs.length > 0 ? diffArgs : ['HEAD'];
             sendJson(res, { args: args.join(' ') });
           }
+          return;
+        }
+
+        if (pathname === '/api/diff/summary') {
+          const ref = url.searchParams.get('ref') || effectiveRef || 'work';
+          const fileCount = getDiffFiles(ref).length;
+          sendJson(res, { fileCount, threshold: LARGE_DIFF_FILE_THRESHOLD });
           return;
         }
 

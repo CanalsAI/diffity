@@ -17,6 +17,8 @@ import { StaleDiffBanner } from '../layout/stale-diff-banner';
 import { CheckCircleIcon } from '../icons/check-circle-icon';
 import { PageLoader } from '../layout/skeleton';
 import { useDiffStaleness } from '../../hooks/use-diff-staleness';
+import { refreshDiffWithGate } from '../../lib/large-diff-gate';
+import { toast } from 'sonner';
 import { type ViewMode, getFilePath, getAutoCollapsedPaths } from '../../lib/diff-utils';
 import { sortFilesByTree } from '../../lib/file-tree';
 import { buildFirstOpenThreadByFile, buildThreadCountsByFile } from '../../lib/comment-navigation';
@@ -457,11 +459,21 @@ export function DiffPage() {
     queryClient.invalidateQueries({ queryKey: ['viewed'] });
   }, [queryClient]);
 
-  const handleRefreshDiff = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['diff'] });
-    queryClient.invalidateQueries({ queryKey: ['viewed'] });
-    resetStaleness();
-  }, [queryClient, resetStaleness]);
+  const handleRefreshDiff = useCallback(async () => {
+    try {
+      await refreshDiffWithGate(refParam, () => {
+        queryClient.invalidateQueries({ queryKey: ['diff'] });
+        queryClient.invalidateQueries({ queryKey: ['viewed'] });
+        resetStaleness();
+      }, () => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('load');
+        window.location.replace(`${url.pathname}${url.search}${url.hash}`);
+      });
+    } catch {
+      toast.error('Failed to check diff size');
+    }
+  }, [queryClient, refParam, resetStaleness]);
 
   const handleSidebarFileClick = useCallback((path: string) => {
     setActiveFile(path);
