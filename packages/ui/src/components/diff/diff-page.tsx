@@ -30,16 +30,15 @@ import type { LineSelection } from '../comments/types';
 import { isThreadResolved } from '../comments/types';
 
 export function DiffPage() {
-  const { ref: refParam, theme: initialTheme, view: initialViewMode } = useLoaderData<{
+  const { ref: refParam, view: initialViewMode } = useLoaderData<{
     ref: string;
-    theme: 'light' | 'dark' | null;
     view: 'split' | 'unified' | null;
   }>();
 
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode || 'split');
   const [hideWhitespace, setHideWhitespace] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const { theme, toggleTheme } = useTheme(initialTheme);
+  const { theme, toggleTheme } = useTheme();
   const { autoCollapse, toggleAutoCollapse } = useAutoCollapse();
   const { data: rawDiff, error } = useDiff(hideWhitespace, refParam);
   const diff = useMemo(() => {

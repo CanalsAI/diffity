@@ -2,21 +2,14 @@ import { useState, useEffect, useLayoutEffect, useCallback } from 'react';
 
 type Theme = 'light' | 'dark';
 
-function getStoredTheme(): Theme | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  return localStorage.getItem('diffity-theme') as Theme | null;
-}
-
 export function getTheme(): Theme {
   return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
 }
 
-export function useTheme(initialTheme?: Theme | null) {
-  const [theme, setTheme] = useState<Theme>(
-    () => getStoredTheme() || initialTheme || 'light'
-  );
+// The initial theme is resolved before first paint by the bootstrap script in
+// root.tsx, so start from whatever it applied.
+export function useTheme() {
+  const [theme, setTheme] = useState<Theme>(getTheme);
 
   useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

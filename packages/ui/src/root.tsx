@@ -8,10 +8,10 @@ import { ErrorPage } from "./components/error-page";
 import "nprogress/nprogress.css";
 import "./styles/app.css";
 
-// Apply the theme before first paint. `useTheme` only sets `data-theme` once a
-// route renders, which is after the loader has fetched the diff — so without
-// this the HydrateFallback spinner always flashes in the light theme. Mirrors
-// useTheme's precedence: stored choice, then the `?theme=` param.
+// Resolve the theme before first paint — stored choice, then the `?theme=`
+// param. Routes only render after their loader has fetched data, so applying it
+// any later leaves the HydrateFallback spinner in the light theme. `useTheme`
+// reads back what this sets.
 const themeBootstrap = `try{var t=localStorage.getItem('diffity-theme')||new URLSearchParams(location.search).get('theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}`;
 
 export function Layout(props: { children: React.ReactNode }) {

@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   useSearchParams as useRouterSearchParams,
   useNavigate,
-  useLoaderData,
 } from 'react-router';
 import {
   useQuery,
@@ -44,7 +43,6 @@ import { PencilIcon } from '../icons/pencil-icon';
 interface TreePageProps {
   tourId?: string;
   tourStepIndex?: number;
-  initialTheme?: 'light' | 'dark' | null;
 }
 
 function formatTreeThreadsForCopy(threads: CommentThread[]): string {
@@ -96,14 +94,11 @@ function formatTreeThreadsForCopy(threads: CommentThread[]): string {
 }
 
 export function TreePage(props: TreePageProps) {
-  const { tourId, tourStepIndex: tourStepIndexProp, initialTheme } = props;
+  const { tourId, tourStepIndex: tourStepIndexProp } = props;
 
-  const loaderData = useLoaderData<{ theme?: 'light' | 'dark' | null }>();
   const [searchParams, setSearchParams] = useRouterSearchParams();
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme(
-    initialTheme ?? loaderData?.theme ?? null,
-  );
+  const { theme, toggleTheme } = useTheme();
   const queryClient = useQueryClient();
   const { isStale, resetStaleness } = useTreeStaleness();
 
