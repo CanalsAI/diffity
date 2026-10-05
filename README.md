@@ -2,6 +2,25 @@
 
 # diffity
 
+## Contents
+
+- [See your diffs](#see-your-diffs)
+- [AI code review](#ai-code-review)
+  - [`/diffity-diff`](#diffity-diff)
+  - [`/diffity-review`](#diffity-review)
+  - [`/diffity-resolve`](#diffity-resolve)
+- [Browse project files](#browse-project-files)
+  - [`/diffity-tree`](#diffity-tree)
+  - [`/diffity-resolve-tree`](#diffity-resolve-tree)
+- [Guided code tours](#guided-code-tours)
+  - [`/diffity-tour`](#diffity-tour)
+- [Learn any topic](#learn-any-topic)
+  - [`/diffity-learn`](#diffity-learn)
+- [GitHub PRs](#github-prs)
+- [Multiple projects](#multiple-projects)
+- [Options](#options)
+- [License](#license)
+
 [![npm version](https://img.shields.io/npm/v/diffity)](https://www.npmjs.com/package/diffity)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
