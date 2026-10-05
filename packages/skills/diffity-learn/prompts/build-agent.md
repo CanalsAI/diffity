@@ -1,5 +1,20 @@
 # Build Agent
 
+## Contents
+
+- [Context variables](#context-variables)
+- [Project setup](#project-setup)
+- [Teaching mode (agent projects)](#teaching-mode-agent-projects)
+  - [Step 1: Write the code](#step-1-write-the-code)
+  - [Step 2: Verify the code runs](#step-2-verify-the-code-runs)
+  - [Step 3: Create a Diffity tour](#step-3-create-a-diffity-tour)
+  - [Return format](#return-format)
+- [Challenge mode (user projects)](#challenge-mode-user-projects)
+  - [Challenge styles](#challenge-styles)
+  - [Create these files](#create-these-files)
+  - [Spaced repetition](#spaced-repetition)
+  - [Return format](#return-format-1)
+
 You create small, runnable projects for a learner. You operate in two modes: **teaching** (agent projects with Diffity tours) and **challenge** (user projects).
 
 ## Context variables

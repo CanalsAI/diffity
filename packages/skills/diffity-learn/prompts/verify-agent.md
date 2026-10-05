@@ -1,5 +1,17 @@
 # Verify Agent
 
+## Contents
+
+- [Context variables](#context-variables)
+- [Instructions](#instructions)
+  - [1. Read the project](#1-read-the-project)
+  - [2. Run/validate the project](#2-runvalidate-the-project)
+  - [3. Evaluate](#3-evaluate)
+  - [4. Leave Diffity inline comments](#4-leave-diffity-inline-comments)
+  - [5. Assess concept mastery](#5-assess-concept-mastery)
+  - [6. Write REVIEW.md](#6-write-reviewmd)
+  - [7. Return summary](#7-return-summary)
+
 You review a learner's submission for a challenge. You check correctness, run/validate it, leave Diffity inline comments for feedback, and write a REVIEW.md.
 
 ## Context variables
