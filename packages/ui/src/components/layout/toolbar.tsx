@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router';
 import type { ParsedDiff } from '@diffity/parser';
-import { getFilePath } from '../../lib/diff-utils';
+import { getFilePath, isWorkingTreeRef } from '../../lib/diff-utils';
 import { UnifiedViewIcon } from '../icons/unified-view-icon';
 import { SplitViewIcon } from '../icons/split-view-icon';
 import { SegmentedToggle } from '../ui/segmented-toggle';
@@ -152,6 +153,7 @@ export function Toolbar(props: ToolbarProps) {
     onSearchPrev,
   } = props;
   const [showGitHub, setShowGitHub] = useState(false);
+  const [, setSearchParams] = useSearchParams();
 
   const formatForCopy = useCallback(() => {
     return formatThreadsForCopy(threads, diff, diffRef);
@@ -172,7 +174,23 @@ export function Toolbar(props: ToolbarProps) {
             {branch}
           </span>
         )}
-        {description && <span className="text-text-muted truncate hidden lg:inline">{description}</span>}
+        {isWorkingTreeRef(diffRef) ? (
+          <select
+            aria-label="Changes to show"
+            value={diffRef}
+            onChange={(event) => setSearchParams((params) => {
+              params.set('ref', event.target.value);
+              params.set('view', viewMode);
+              params.delete('load');
+              return params;
+            })}
+            className="rounded-md border border-border bg-bg-tertiary px-2 py-1 text-xs text-text cursor-pointer shrink-0"
+          >
+            <option value="work">All changes</option>
+            <option value="staged">Staged</option>
+            <option value="unstaged">Unstaged</option>
+          </select>
+        ) : description && <span className="text-text-muted truncate hidden lg:inline">{description}</span>}
         {diff && (
           <span className="inline-flex items-center bg-bg-tertiary rounded-md overflow-hidden text-text-muted shrink-0">
             <span className="px-2 py-0.5">{diff.stats.filesChanged} file{diff.stats.filesChanged !== 1 ? 's' : ''} changed</span>

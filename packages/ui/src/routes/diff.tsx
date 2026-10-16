@@ -31,7 +31,7 @@ export default function DiffRoute({ loaderData }: Route.ComponentProps) {
   if (loaderData.largeDiff) {
     return <LargeDiffPrompt fileCount={loaderData.largeDiff.fileCount} />;
   }
-  return <DiffPage />;
+  return <DiffPage key={loaderData.ref} />;
 }
 
 function LargeDiffPrompt({ fileCount }: { fileCount: number }) {
