@@ -74,15 +74,29 @@ export function HunkHeader(props: HunkHeaderProps) {
   const isSmallGap = remainingLines <= SMALL_GAP_THRESHOLD;
   const showUp = remainingUp > 0;
   const showDown = remainingDown > 0;
+  const expandAllButton = (
+    <button
+      className={expandBtn}
+      disabled={loadingDirection !== null}
+      onClick={() => onExpand('all')}
+      title={`Expand all ${remainingLines} lines`}
+      aria-label={`Expand all ${remainingLines} lines`}
+    >
+      <ChevronUpDownIcon />
+    </button>
+  );
 
   if (position === 'top') {
     return (
       <tr className="bg-diff-hunk-bg group/hunk">
         {loadingDirection ? <SpinnerCell /> : (
           <td className={gutterCell}>
-            <button className={expandBtn} onClick={() => onExpand('up')} title={`Expand ${Math.min(remainingLines, 20)} lines`}>
-              <ArrowUpIcon />
-            </button>
+            <div className="flex">
+              <button className={expandBtn} onClick={() => onExpand('up')} title={`Expand ${Math.min(remainingLines, 20)} lines`}>
+                <ArrowUpIcon />
+              </button>
+              {expandAllButton}
+            </div>
           </td>
         )}
         <td colSpan={3} className="px-3 py-1 font-mono text-xs text-diff-hunk-text select-none">
@@ -116,7 +130,7 @@ export function HunkHeader(props: HunkHeaderProps) {
   return (
     <>
       <tr className={expandRow}>
-        {loadingDirection === 'down' ? <SpinnerCell /> : (
+        {loadingDirection ? <SpinnerCell /> : (
           <td className={gutterCell}>
             <button className={expandBtn} onClick={() => onExpand('down')} title="Expand down">
               <ArrowDownIcon />
@@ -126,13 +140,13 @@ export function HunkHeader(props: HunkHeaderProps) {
         <td colSpan={3} />
       </tr>
       <tr className="bg-diff-hunk-bg group/hunk">
-        <td className={gutterCell} />
+        <td className={gutterCell}>{expandAllButton}</td>
         <td colSpan={3} className="px-3 py-1 font-mono text-xs text-diff-hunk-text select-none">
           {formatHunkHeader(hunk)}
         </td>
       </tr>
       <tr className={expandRow}>
-        {loadingDirection === 'up' ? <SpinnerCell /> : (
+        {loadingDirection ? <SpinnerCell /> : (
           <td className={gutterCell}>
             <button className={expandBtn} onClick={() => onExpand('up')} title="Expand up">
               <ArrowUpIcon />

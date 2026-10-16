@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import type { DiffHunk } from '@diffity/parser';
 import type { DiffFile, DiffLine as DiffLineType } from '@diffity/parser';
 import type { SyntaxToken } from '../../lib/syntax-token';
@@ -17,6 +18,8 @@ import { useLineSelection } from '../../hooks/use-line-selection';
 import { useCopy } from '../../hooks/use-copy';
 import { CopyIcon } from '../icons/copy-icon';
 import { CheckIcon } from '../icons/check-icon';
+import { ChevronUpDownIcon } from '../icons/chevron-up-down-icon';
+import { Spinner } from '../icons/spinner';
 import { CommentIcon } from '../icons/comment-icon';
 import { DiffStats } from './diff-stats';
 import { Badge } from '../ui/badge';
@@ -80,7 +83,7 @@ export function FileBlock(props: FileBlockProps) {
 
   const [largeDiffExpanded, setLargeDiffExpanded] = useState(false);
   const [expansions, setExpansions] = useState<Map<string, GapExpansion>>(new Map());
-  const [loadingGap, setLoadingGap] = useState<{ id: string; direction: 'up' | 'down' | 'all' } | null>(null);
+  const [loadingDirection, setLoadingDirection] = useState<'up' | 'down' | 'all' | null>(null);
 
   const filePath = getFilePath(file);
   const showRename = file.status === 'renamed' && file.oldPath !== file.newPath;
@@ -278,52 +281,56 @@ export function FileBlock(props: FileBlockProps) {
     return map;
   }, [gaps]);
 
-  const handleExpand = useCallback(async (gap: ExpandableGap, direction: 'up' | 'down' | 'all') => {
-    setLoadingGap({ id: gap.id, direction });
+  const handleExpand = useCallback(async (gapsToExpand: ExpandableGap[], direction: 'up' | 'down' | 'all') => {
+    setLoadingDirection(direction);
 
-    const lines = await queryClient.ensureQueryData(
-      fileContentOptions(fileContentPath, true, baseRef)
-    );
+    try {
+      const lines = await queryClient.ensureQueryData(
+        fileContentOptions(fileContentPath, true, baseRef)
+      );
 
-    setExpansions(prev => {
-      const next = new Map(prev);
-      const existing = next.get(gap.id) || { fromTop: 0, fromBottom: 0, linesFromTop: [], linesFromBottom: [] };
-      const newOffset = gap.newStart - gap.oldStart;
-      const range = getExpandRange(gap, direction, existing);
+      setExpansions(prev => {
+        const next = new Map(prev);
+        for (const gap of gapsToExpand) {
+          const existing = next.get(gap.id) || { fromTop: 0, fromBottom: 0, linesFromTop: [], linesFromBottom: [] };
+          const newOffset = gap.newStart - gap.oldStart;
+          const range = getExpandRange(gap, direction, existing);
 
-      if (!range) {
-        return prev;
-      }
+          if (!range) {
+            continue;
+          }
 
-      const contextLines = createContextLines(lines, range.oldStart, range.oldEnd, newOffset);
+          const contextLines = createContextLines(lines, range.oldStart, range.oldEnd, newOffset);
 
-      if (direction === 'all') {
-        next.set(gap.id, {
-          fromTop: gap.oldEnd - gap.oldStart + 1,
-          fromBottom: 0,
-          linesFromTop: contextLines,
-          linesFromBottom: [],
-        });
-      } else if (direction === 'down') {
-        const newExpansion = {
-          ...existing,
-          fromTop: existing.fromTop + (range.oldEnd - range.oldStart + 1),
-          linesFromTop: [...existing.linesFromTop, ...contextLines],
-        };
-        next.set(gap.id, newExpansion);
-      } else {
-        const newExpansion = {
-          ...existing,
-          fromBottom: existing.fromBottom + (range.oldEnd - range.oldStart + 1),
-          linesFromBottom: [...contextLines, ...existing.linesFromBottom],
-        };
-        next.set(gap.id, newExpansion);
-      }
+          if (direction === 'all') {
+            next.set(gap.id, {
+              fromTop: gap.totalLines,
+              fromBottom: 0,
+              linesFromTop: [...existing.linesFromTop, ...contextLines, ...existing.linesFromBottom],
+              linesFromBottom: [],
+            });
+          } else if (direction === 'down') {
+            next.set(gap.id, {
+              ...existing,
+              fromTop: existing.fromTop + (range.oldEnd - range.oldStart + 1),
+              linesFromTop: [...existing.linesFromTop, ...contextLines],
+            });
+          } else {
+            next.set(gap.id, {
+              ...existing,
+              fromBottom: existing.fromBottom + (range.oldEnd - range.oldStart + 1),
+              linesFromBottom: [...contextLines, ...existing.linesFromBottom],
+            });
+          }
+        }
 
-      return next;
-    });
-
-    setLoadingGap(null);
+        return next;
+      });
+    } catch {
+      toast.error('Failed to expand file context');
+    } finally {
+      setLoadingDirection(null);
+    }
   }, [fileContentPath, queryClient, baseRef]);
 
   const getGapRemaining = useCallback((gap: ExpandableGap): { total: number; up: number; down: number } => {
@@ -361,11 +368,11 @@ export function FileBlock(props: FileBlockProps) {
       remainingLines: remaining.total,
       remainingUp: remaining.up,
       remainingDown: remaining.down,
-      loadingDirection: loadingGap?.id === gap.id ? loadingGap.direction : null,
+      loadingDirection,
       wasExpanded,
-      onExpand: (dir: 'up' | 'down' | 'all') => handleExpand(gap, dir),
+      onExpand: (dir: 'up' | 'down' | 'all') => handleExpand([gap], dir),
     };
-  }, [gapMap, getGapRemaining, loadingGap, handleExpand, expansions]);
+  }, [gapMap, getGapRemaining, loadingDirection, handleExpand, expansions]);
 
   const total = file.additions + file.deletions;
   const addBlocks = total > 0 ? Math.round((file.additions / total) * Math.min(5, total)) : 0;
@@ -421,6 +428,21 @@ export function FileBlock(props: FileBlockProps) {
         {file.status !== 'modified' && <StatusBadge status={file.status} />}
         {file.isBinary && <Badge className="bg-bg-tertiary text-text-muted">Binary</Badge>}
         <div className="ml-auto flex items-center gap-2.5 shrink-0">
+          {!file.isBinary && gaps.some(gap => getGapRemaining(gap).total > 0) && (
+            <IconButton
+              className="w-5 h-5 disabled:cursor-wait disabled:opacity-50"
+              disabled={loadingDirection !== null}
+              title="Expand whole file"
+              aria-label="Expand whole file"
+              onClick={() => {
+                if (collapsed) onToggleCollapse(filePath);
+                setLargeDiffExpanded(true);
+                void handleExpand(gaps, 'all');
+              }}
+            >
+              {loadingDirection ? <Spinner /> : <ChevronUpDownIcon />}
+            </IconButton>
+          )}
           {(fileThreads.length + orphanedThreads.length) > 0 && (
             <span className="text-[11px] text-text-muted flex items-center gap-1">
               <CommentIcon className="w-3 h-3" />
@@ -560,8 +582,8 @@ export function FileBlock(props: FileBlockProps) {
                     <ExpandRow
                       position="bottom"
                       remainingLines={bottomRemaining}
-                      loading={loadingGap?.id === 'bottom'}
-                      onExpand={(dir) => handleExpand(bottomGap, dir)}
+                      loading={loadingDirection !== null}
+                      onExpand={(dir) => handleExpand([bottomGap], dir)}
                     />
                     {bottomExpansion?.linesFromBottom && bottomExpansion.linesFromBottom.length > 0 &&
                       renderExpansionRows(bottomExpansion.linesFromBottom, viewMode, 'bottom-bot', bottomSyntaxMap, bottomCommentProps)}

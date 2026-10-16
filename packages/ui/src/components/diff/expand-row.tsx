@@ -1,5 +1,6 @@
 import { ArrowUpIcon } from '../icons/arrow-up-icon';
 import { ArrowDownIcon } from '../icons/arrow-down-icon';
+import { ChevronUpDownIcon } from '../icons/chevron-up-down-icon';
 import { Spinner } from '../icons/spinner';
 
 interface ExpandRowProps {
@@ -30,13 +31,23 @@ export function ExpandRow(props: ExpandRowProps) {
         </td>
       ) : (
         <td className={gutterCell}>
-          <button
-            className={expandBtn}
-            onClick={() => onExpand('down')}
-            title={`Expand ${Math.min(remainingLines, 20)} lines`}
-          >
-            {position === 'bottom' ? <ArrowDownIcon /> : <ArrowUpIcon />}
-          </button>
+          <div className="flex">
+            <button
+              className={expandBtn}
+              onClick={() => onExpand('down')}
+              title={`Expand ${Math.min(remainingLines, 20)} lines`}
+            >
+              {position === 'bottom' ? <ArrowDownIcon /> : <ArrowUpIcon />}
+            </button>
+            <button
+              className={expandBtn}
+              onClick={() => onExpand('all')}
+              title={`Expand all ${remainingLines} lines`}
+              aria-label={`Expand all ${remainingLines} lines`}
+            >
+              <ChevronUpDownIcon />
+            </button>
+          </div>
         </td>
       )}
       <td colSpan={3} />
