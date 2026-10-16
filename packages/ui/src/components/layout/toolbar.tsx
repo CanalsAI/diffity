@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import type { ParsedDiff } from '@diffity/parser';
-import { getFilePath } from '../../lib/diff-utils';
+import { getFilePath, isWorkingTreeRef } from '../../lib/diff-utils';
 import { UnifiedViewIcon } from '../icons/unified-view-icon';
 import { SplitViewIcon } from '../icons/split-view-icon';
 import { SegmentedToggle } from '../ui/segmented-toggle';
@@ -16,6 +16,7 @@ import { DiffSearchBar } from '../diff/diff-search-bar';
 import { GitHubDialog } from './github-dialog';
 import { CommentToolbarActions } from '../comments/comment-toolbar-actions';
 import { OptionsMenu, menuItemClass } from './options-menu';
+import { ChangesSelect } from './changes-select';
 import { GENERAL_THREAD_FILE_PATH } from '../comments/types';
 import type { ViewMode } from '../../lib/diff-utils';
 import type { CommentThread } from '../comments/types';
@@ -172,7 +173,9 @@ export function Toolbar(props: ToolbarProps) {
             {branch}
           </span>
         )}
-        {description && <span className="text-text-muted truncate hidden lg:inline">{description}</span>}
+        {isWorkingTreeRef(diffRef) ? (
+          <ChangesSelect diffRef={diffRef} viewMode={viewMode} />
+        ) : description && <span className="text-text-muted truncate hidden lg:inline">{description}</span>}
         {diff && (
           <span className="inline-flex items-center bg-bg-tertiary rounded-md overflow-hidden text-text-muted shrink-0">
             <span className="px-2 py-0.5">{diff.stats.filesChanged} file{diff.stats.filesChanged !== 1 ? 's' : ''} changed</span>

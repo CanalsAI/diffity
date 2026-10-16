@@ -521,27 +521,6 @@ export function DiffPage() {
     return <PageLoader />;
   }
 
-  if (diff.files.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-bg text-text font-sans gap-2">
-        <div className="text-added opacity-40 mb-1">
-          <CheckCircleIcon />
-        </div>
-        <h2 className="text-base font-medium text-text-secondary">No changes found</h2>
-        <p className="text-xs text-text-muted">There are no differences to display.</p>
-        <div className="mt-4 flex flex-col gap-1.5 items-center">
-          <p className="text-xs text-text-muted mb-1">Try one of these</p>
-          <code className="inline-block px-3 py-1 bg-bg-secondary border border-border rounded-md font-mono text-xs text-text">
-            diffity HEAD~1
-          </code>
-          <code className="inline-block px-3 py-1 bg-bg-secondary border border-border rounded-md font-mono text-xs text-text">
-            diffity main..feature
-          </code>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-screen bg-bg text-text font-sans">
       <Toolbar
@@ -574,7 +553,15 @@ export function DiffPage() {
       />
       {isStale && <StaleDiffBanner onRefresh={handleRefreshDiff} />}
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar
+        {diff.files.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2">
+            <div className="text-added opacity-40 mb-1">
+              <CheckCircleIcon />
+            </div>
+            <h2 className="text-base font-medium text-text-secondary">No changes found</h2>
+            <p className="text-xs text-text-muted">There are no differences to display.</p>
+          </div>
+        ) : <Sidebar
           files={diff?.files || []}
           activeFile={activeFile}
           reviewedFiles={reviewedFiles}
@@ -582,8 +569,8 @@ export function DiffPage() {
           onFileClick={handleSidebarFileClick}
           onCommentedFileClick={handleSidebarCommentedFileClick}
           onReviewedChangeMany={handleReviewedChangeMany}
-        />
-        {diff ? (
+        />}
+        {diff.files.length > 0 ? (
           <DiffView
             diff={diff}
             viewMode={viewMode}
