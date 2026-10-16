@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router';
 import type { ParsedDiff } from '@diffity/parser';
 import { getFilePath, isWorkingTreeRef } from '../../lib/diff-utils';
 import { UnifiedViewIcon } from '../icons/unified-view-icon';
@@ -17,6 +16,7 @@ import { DiffSearchBar } from '../diff/diff-search-bar';
 import { GitHubDialog } from './github-dialog';
 import { CommentToolbarActions } from '../comments/comment-toolbar-actions';
 import { OptionsMenu, menuItemClass } from './options-menu';
+import { ChangesSelect } from './changes-select';
 import { GENERAL_THREAD_FILE_PATH } from '../comments/types';
 import type { ViewMode } from '../../lib/diff-utils';
 import type { CommentThread } from '../comments/types';
@@ -153,7 +153,6 @@ export function Toolbar(props: ToolbarProps) {
     onSearchPrev,
   } = props;
   const [showGitHub, setShowGitHub] = useState(false);
-  const [, setSearchParams] = useSearchParams();
 
   const formatForCopy = useCallback(() => {
     return formatThreadsForCopy(threads, diff, diffRef);
@@ -175,21 +174,7 @@ export function Toolbar(props: ToolbarProps) {
           </span>
         )}
         {isWorkingTreeRef(diffRef) ? (
-          <select
-            aria-label="Changes to show"
-            value={diffRef}
-            onChange={(event) => setSearchParams((params) => {
-              params.set('ref', event.target.value);
-              params.set('view', viewMode);
-              params.delete('load');
-              return params;
-            })}
-            className="rounded-md border border-border bg-bg-tertiary px-2 py-1 text-xs text-text cursor-pointer shrink-0"
-          >
-            <option value="work">All changes</option>
-            <option value="staged">Staged</option>
-            <option value="unstaged">Unstaged</option>
-          </select>
+          <ChangesSelect diffRef={diffRef} viewMode={viewMode} />
         ) : description && <span className="text-text-muted truncate hidden lg:inline">{description}</span>}
         {diff && (
           <span className="inline-flex items-center bg-bg-tertiary rounded-md overflow-hidden text-text-muted shrink-0">
