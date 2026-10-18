@@ -6,6 +6,8 @@ import { repoInfoOptions } from "../queries/info";
 import { viewedOptions } from "../queries/viewed";
 import { DiffPage } from "../components/diff/diff-page";
 import { ErrorPage } from "../components/error-page";
+import { ChangesSelect } from "../components/layout/changes-select";
+import { isWorkingTreeRef, type ViewMode } from "../lib/diff-utils";
 import { allowOneLargeDiffLoad, consumeLargeDiffLoad, getLargeDiffSummary } from "../lib/large-diff-gate";
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
@@ -29,12 +31,12 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 
 export default function DiffRoute({ loaderData }: Route.ComponentProps) {
   if (loaderData.largeDiff) {
-    return <LargeDiffPrompt fileCount={loaderData.largeDiff.fileCount} />;
+    return <LargeDiffPrompt fileCount={loaderData.largeDiff.fileCount} diffRef={loaderData.ref} viewMode={loaderData.view || 'split'} />;
   }
-  return <DiffPage />;
+  return <DiffPage key={loaderData.ref} />;
 }
 
-function LargeDiffPrompt({ fileCount }: { fileCount: number }) {
+function LargeDiffPrompt({ fileCount, diffRef, viewMode }: { fileCount: number; diffRef: string; viewMode: ViewMode }) {
   const navigate = useNavigate();
 
   return (
@@ -43,6 +45,7 @@ function LargeDiffPrompt({ fileCount }: { fileCount: number }) {
       <p className="text-sm text-text-secondary">
         {fileCount.toLocaleString()} files changed. Loading the full diff may slow your browser.
       </p>
+      {isWorkingTreeRef(diffRef) && <ChangesSelect diffRef={diffRef} viewMode={viewMode} />}
       <button
         className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-hover cursor-pointer"
         onClick={() => {
