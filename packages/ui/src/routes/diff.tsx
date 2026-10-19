@@ -1,4 +1,4 @@
-import { useRouteError, useNavigate } from "react-router";
+import { redirect, useRouteError, useNavigate } from "react-router";
 import type { Route } from "./+types/diff";
 import { queryClient } from "../lib/query-client";
 import { diffOptions } from "../queries/diff";
@@ -14,6 +14,23 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   const ref = url.searchParams.get("ref") || "work";
   const view = url.searchParams.get("view") as "split" | "unified" | null;
+  const info = await queryClient.ensureQueryData(repoInfoOptions(ref));
+  let storedRef: string | null = null;
+
+  try {
+    const storageKey = `diffity-changes:${info.hostname}:${info.root}`;
+    if (!url.searchParams.get("ref")) {
+      storedRef = localStorage.getItem(storageKey);
+    } else if (isWorkingTreeRef(ref)) {
+      localStorage.setItem(storageKey, ref);
+    }
+  } catch {}
+
+  if (storedRef && storedRef !== ref && isWorkingTreeRef(storedRef)) {
+    url.searchParams.set("ref", storedRef);
+    url.searchParams.delete("load");
+    throw redirect(`${url.pathname}${url.search}${url.hash}`);
+  }
 
   if (!consumeLargeDiffLoad(url.searchParams.get("load"))) {
     const largeDiff = await getLargeDiffSummary(ref);
@@ -22,7 +39,6 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 
   await Promise.all([
     queryClient.ensureQueryData(diffOptions(false, ref)),
-    queryClient.ensureQueryData(repoInfoOptions(ref)),
     queryClient.ensureQueryData(viewedOptions(ref)),
   ]);
 

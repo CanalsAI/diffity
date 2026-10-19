@@ -50,6 +50,7 @@ export interface RepoInfo {
   name: string;
   branch: string;
   root: string;
+  hostname: string;
   description: string;
   capabilities?: { reviews: boolean; revert: boolean; staleness: boolean };
   sessionId?: string | null;

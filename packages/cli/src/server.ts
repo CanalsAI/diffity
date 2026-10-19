@@ -4,6 +4,7 @@ import {
   type ServerResponse,
 } from 'node:http';
 import { createHash } from 'node:crypto';
+import { hostname } from 'node:os';
 import { execSync, execFile } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, extname } from 'node:path';
@@ -404,6 +405,7 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
           }
           sendJson(res, {
             ...info,
+            hostname: hostname(),
             description: refDescription,
             capabilities,
             sessionId,
@@ -582,6 +584,7 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
           const session = findOrCreateSession('__tree__');
           sendJson(res, {
             ...info,
+            hostname: hostname(),
             description: 'Repository file browser',
             capabilities: { reviews: true, revert: false, staleness: false },
             sessionId: session.id,
