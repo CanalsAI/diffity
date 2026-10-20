@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { DiffHunk } from '@diffity/parser';
@@ -30,6 +30,7 @@ import { OrphanedThreads } from '../comments/orphaned-threads';
 import { ThreadBadge } from '../ui/thread-badge';
 import { buildExpansionSyntaxMap, renderExpansionRows } from './render-expansion-rows';
 import { ExpandRow } from './expand-row';
+import { scrollToElement } from '../../lib/dom-utils';
 
 export const LARGE_DIFF_LINE_THRESHOLD = 200;
 
@@ -82,10 +83,25 @@ export function FileBlock(props: FileBlockProps) {
   const isLargeDiff = totalLines >= LARGE_DIFF_LINE_THRESHOLD;
 
   const [largeDiffExpanded, setLargeDiffExpanded] = useState(false);
+  const fileRef = useRef<HTMLDivElement>(null);
+  const scrollOnExpand = useRef(false);
   const [expansions, setExpansions] = useState<Map<string, GapExpansion>>(new Map());
   const [loadingDirection, setLoadingDirection] = useState<'up' | 'down' | 'all' | null>(null);
 
+  useEffect(() => {
+    if (collapsed || !scrollOnExpand.current) return;
+    const frame = requestAnimationFrame(() => {
+      scrollOnExpand.current = false;
+      if (fileRef.current) scrollToElement(fileRef.current);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [largeDiffExpanded, collapsed]);
+
   const filePath = getFilePath(file);
+  const handleToggleCollapse = () => {
+    scrollOnExpand.current = collapsed;
+    onToggleCollapse(filePath);
+  };
   const showRename = file.status === 'renamed' && file.oldPath !== file.newPath;
   const isNewFile = file.status === 'added';
 
@@ -134,6 +150,7 @@ export function FileBlock(props: FileBlockProps) {
   const allFileThreads = useMemo(() => {
     return allThreads.filter(t => t.filePath === filePath && t.filePath !== GENERAL_THREAD_FILE_PATH);
   }, [allThreads, filePath]);
+  const isDiffHidden = isLargeDiff && !largeDiffExpanded && !forceRenderLargeDiff && allFileThreads.length === 0;
 
   const { anchoredThreads: fileThreads, orphanedThreads } = useMemo(() => {
     const diffLineNumbers = new Set<string>();
@@ -388,6 +405,7 @@ export function FileBlock(props: FileBlockProps) {
     <div
       className={`border rounded-lg mx-4 my-3 overflow-clip ${highlighted ? 'animate-flash-highlight-border' : 'border-border'}`}
       id={`file-${encodeURIComponent(filePath)}`}
+      ref={fileRef}
       onAnimationEnd={onHighlightEnd}
     >
       <div
@@ -395,14 +413,14 @@ export function FileBlock(props: FileBlockProps) {
       >
         <IconButton
           className="text-[10px] w-4 h-4 shrink-0"
-          onClick={() => onToggleCollapse(filePath)}
+          onClick={handleToggleCollapse}
           title={collapsed ? 'Expand' : 'Collapse'}
         >
           {collapsed ? '\u25b6' : '\u25bc'}
         </IconButton>
         <button
           className="font-mono text-xs truncate text-left cursor-pointer hover:text-accent transition-colors"
-          onClick={() => onToggleCollapse(filePath)}
+          onClick={handleToggleCollapse}
         >
           {showRename ? (
             <>
@@ -435,6 +453,7 @@ export function FileBlock(props: FileBlockProps) {
               title="Expand whole file"
               aria-label="Expand whole file"
               onClick={() => {
+                scrollOnExpand.current = collapsed || isDiffHidden;
                 if (collapsed) onToggleCollapse(filePath);
                 setLargeDiffExpanded(true);
                 void handleExpand(gaps, 'all');
@@ -489,12 +508,15 @@ export function FileBlock(props: FileBlockProps) {
                 ? `File mode changed from ${file.oldMode} to ${file.newMode}`
                 : 'No content changes'}
             </div>
-          ) : isLargeDiff && !largeDiffExpanded && !forceRenderLargeDiff && allFileThreads.length === 0 ? (
+          ) : isDiffHidden ? (
             <div className="flex items-center justify-center gap-3 py-6 px-4 text-sm text-text-muted">
               <span>Large diff not rendered — {totalLines} lines</span>
               <button
                 className="text-accent hover:underline cursor-pointer font-medium"
-                onClick={() => setLargeDiffExpanded(true)}
+                onClick={() => {
+                  scrollOnExpand.current = true;
+                  setLargeDiffExpanded(true);
+                }}
               >
                 Load diff
               </button>
