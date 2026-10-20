@@ -84,21 +84,24 @@ export function FileBlock(props: FileBlockProps) {
 
   const [largeDiffExpanded, setLargeDiffExpanded] = useState(false);
   const fileRef = useRef<HTMLDivElement>(null);
-  const wasCollapsed = useRef(collapsed);
+  const scrollOnExpand = useRef(false);
   const [expansions, setExpansions] = useState<Map<string, GapExpansion>>(new Map());
   const [loadingDirection, setLoadingDirection] = useState<'up' | 'down' | 'all' | null>(null);
 
   useEffect(() => {
-    const expanding = wasCollapsed.current && !collapsed;
-    wasCollapsed.current = collapsed;
-    if (collapsed || (!largeDiffExpanded && !expanding)) return;
+    if (collapsed || !scrollOnExpand.current) return;
     const frame = requestAnimationFrame(() => {
+      scrollOnExpand.current = false;
       if (fileRef.current) scrollToElement(fileRef.current);
     });
     return () => cancelAnimationFrame(frame);
   }, [largeDiffExpanded, collapsed]);
 
   const filePath = getFilePath(file);
+  const handleToggleCollapse = () => {
+    scrollOnExpand.current = collapsed;
+    onToggleCollapse(filePath);
+  };
   const showRename = file.status === 'renamed' && file.oldPath !== file.newPath;
   const isNewFile = file.status === 'added';
 
@@ -147,6 +150,7 @@ export function FileBlock(props: FileBlockProps) {
   const allFileThreads = useMemo(() => {
     return allThreads.filter(t => t.filePath === filePath && t.filePath !== GENERAL_THREAD_FILE_PATH);
   }, [allThreads, filePath]);
+  const isDiffHidden = isLargeDiff && !largeDiffExpanded && !forceRenderLargeDiff && allFileThreads.length === 0;
 
   const { anchoredThreads: fileThreads, orphanedThreads } = useMemo(() => {
     const diffLineNumbers = new Set<string>();
@@ -409,14 +413,14 @@ export function FileBlock(props: FileBlockProps) {
       >
         <IconButton
           className="text-[10px] w-4 h-4 shrink-0"
-          onClick={() => onToggleCollapse(filePath)}
+          onClick={handleToggleCollapse}
           title={collapsed ? 'Expand' : 'Collapse'}
         >
           {collapsed ? '\u25b6' : '\u25bc'}
         </IconButton>
         <button
           className="font-mono text-xs truncate text-left cursor-pointer hover:text-accent transition-colors"
-          onClick={() => onToggleCollapse(filePath)}
+          onClick={handleToggleCollapse}
         >
           {showRename ? (
             <>
@@ -449,6 +453,7 @@ export function FileBlock(props: FileBlockProps) {
               title="Expand whole file"
               aria-label="Expand whole file"
               onClick={() => {
+                scrollOnExpand.current = collapsed || isDiffHidden;
                 if (collapsed) onToggleCollapse(filePath);
                 setLargeDiffExpanded(true);
                 void handleExpand(gaps, 'all');
@@ -503,12 +508,15 @@ export function FileBlock(props: FileBlockProps) {
                 ? `File mode changed from ${file.oldMode} to ${file.newMode}`
                 : 'No content changes'}
             </div>
-          ) : isLargeDiff && !largeDiffExpanded && !forceRenderLargeDiff && allFileThreads.length === 0 ? (
+          ) : isDiffHidden ? (
             <div className="flex items-center justify-center gap-3 py-6 px-4 text-sm text-text-muted">
               <span>Large diff not rendered — {totalLines} lines</span>
               <button
                 className="text-accent hover:underline cursor-pointer font-medium"
-                onClick={() => setLargeDiffExpanded(true)}
+                onClick={() => {
+                  scrollOnExpand.current = true;
+                  setLargeDiffExpanded(true);
+                }}
               >
                 Load diff
               </button>
