@@ -480,7 +480,7 @@ export function FileBlock(props: FileBlockProps) {
         </div>
       </div>
       {!collapsed && (
-        <div>
+        <div className="isolate">
           {file.isBinary ? (
             <div className="p-4 text-center text-text-muted italic">Binary file not shown</div>
           ) : file.hunks.length === 0 ? (
