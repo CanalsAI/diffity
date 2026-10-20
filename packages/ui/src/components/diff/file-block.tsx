@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { DiffHunk } from '@diffity/parser';
@@ -30,6 +30,7 @@ import { OrphanedThreads } from '../comments/orphaned-threads';
 import { ThreadBadge } from '../ui/thread-badge';
 import { buildExpansionSyntaxMap, renderExpansionRows } from './render-expansion-rows';
 import { ExpandRow } from './expand-row';
+import { scrollToElement } from '../../lib/dom-utils';
 
 export const LARGE_DIFF_LINE_THRESHOLD = 200;
 
@@ -82,8 +83,20 @@ export function FileBlock(props: FileBlockProps) {
   const isLargeDiff = totalLines >= LARGE_DIFF_LINE_THRESHOLD;
 
   const [largeDiffExpanded, setLargeDiffExpanded] = useState(false);
+  const fileRef = useRef<HTMLDivElement>(null);
+  const wasCollapsed = useRef(collapsed);
   const [expansions, setExpansions] = useState<Map<string, GapExpansion>>(new Map());
   const [loadingDirection, setLoadingDirection] = useState<'up' | 'down' | 'all' | null>(null);
+
+  useEffect(() => {
+    const expanding = wasCollapsed.current && !collapsed;
+    wasCollapsed.current = collapsed;
+    if (collapsed || (!largeDiffExpanded && !expanding)) return;
+    const frame = requestAnimationFrame(() => {
+      if (fileRef.current) scrollToElement(fileRef.current);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [largeDiffExpanded, collapsed]);
 
   const filePath = getFilePath(file);
   const showRename = file.status === 'renamed' && file.oldPath !== file.newPath;
@@ -388,6 +401,7 @@ export function FileBlock(props: FileBlockProps) {
     <div
       className={`border rounded-lg mx-4 my-3 overflow-clip ${highlighted ? 'animate-flash-highlight-border' : 'border-border'}`}
       id={`file-${encodeURIComponent(filePath)}`}
+      ref={fileRef}
       onAnimationEnd={onHighlightEnd}
     >
       <div
