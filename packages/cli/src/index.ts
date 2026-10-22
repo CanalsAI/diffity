@@ -244,7 +244,7 @@ range syntax (main..feature, main...feature) also work.`)
           console.log(pc.dim(`  Stopped existing instance (pid ${existing.pid})`));
         }
       } else {
-        const urlParams = new URLSearchParams({ ref: effectiveRef });
+        const urlParams = new URLSearchParams(refs.length > 0 ? { ref: effectiveRef } : {});
         if (opts.dark) {
           urlParams.set('theme', 'dark');
         }
@@ -282,7 +282,7 @@ range syntax (main..feature, main...feature) also work.`)
         version: pkg.version,
         registryInfo: { repoRoot, repoHash, repoName },
       });
-      const urlParams = new URLSearchParams({ ref: effectiveRef });
+      const urlParams = new URLSearchParams(refs.length > 0 ? { ref: effectiveRef } : {});
       if (opts.dark) {
         urlParams.set('theme', 'dark');
       }
