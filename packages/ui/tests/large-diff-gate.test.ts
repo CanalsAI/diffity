@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { ensureQueryData, fetchDiffSummary } = vi.hoisted(() => ({
+const { ensureQueryData, setQueryData, fetchDiffSummary } = vi.hoisted(() => ({
   ensureQueryData: vi.fn(),
+  setQueryData: vi.fn(),
   fetchDiffSummary: vi.fn(),
 }));
 
-vi.mock('../src/lib/query-client', () => ({ queryClient: { ensureQueryData } }));
+vi.mock('../src/lib/query-client', () => ({ queryClient: { ensureQueryData, setQueryData } }));
 vi.mock('../src/lib/api', async (importOriginal) => ({
   ...await importOriginal<typeof import('../src/lib/api')>(),
   fetchDiffSummary,
@@ -22,6 +23,7 @@ describe('diff loader', () => {
   beforeEach(() => {
     ensureQueryData.mockReset();
     ensureQueryData.mockResolvedValue({ root: '/workspace', hostname: 'localhost' });
+    setQueryData.mockReset();
     fetchDiffSummary.mockReset();
     const stored = new Map<string, string>();
     vi.stubGlobal('localStorage', {
@@ -125,6 +127,21 @@ describe('diff loader', () => {
 
     expect(result.largeDiff).toBeNull();
     expect(ensureQueryData).toHaveBeenCalledTimes(3);
+  });
+
+  it('loads the diff with no viewed files when the viewed-files request fails', async () => {
+    fetchDiffSummary.mockResolvedValue({ fileCount: 0, threshold: 500 });
+    ensureQueryData.mockImplementation(async ({ queryKey }) => {
+      if (queryKey[0] === 'viewed') {
+        throw new Error('HTTP 502');
+      }
+      return { root: '/workspace', hostname: 'localhost' };
+    });
+
+    const result = await load('?ref=work');
+
+    expect(result.largeDiff).toBeNull();
+    expect(setQueryData).toHaveBeenCalledWith(['viewed', 'work'], { viewed: [], viewedAt: {} });
   });
 
   it('checks the new file count before refreshing an open diff', async () => {

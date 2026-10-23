@@ -45,6 +45,22 @@ export function buildThreadCountsByFile(threads: CommentThread[]): Map<string, n
   return counts;
 }
 
+export function getFilesCommentedSinceViewed(
+  threads: CommentThread[],
+  viewedAt: Record<string, string>,
+): Set<string> {
+  const paths = new Set<string>();
+
+  for (const thread of getUnresolvedFileThreads(threads)) {
+    const since = viewedAt[thread.filePath];
+    if (since && thread.comments.some(comment => Date.parse(comment.createdAt) > Date.parse(since))) {
+      paths.add(thread.filePath);
+    }
+  }
+
+  return paths;
+}
+
 function sortThreadsForNavigation(
   threads: CommentThread[],
   fileOrder: string[],

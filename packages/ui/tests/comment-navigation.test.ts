@@ -3,6 +3,7 @@ import type { CommentThread } from '../src/types/comment';
 import {
   buildFirstOpenThreadByFile,
   buildThreadCountsByFile,
+  getFilesCommentedSinceViewed,
   getThreadLineLabel,
   getThreadPreview,
 } from '../src/lib/comment-navigation';
@@ -57,6 +58,34 @@ describe('buildThreadCountsByFile', () => {
     ]);
 
     expect(Array.from(counts.entries())).toEqual([['src/a.ts', 2]]);
+  });
+});
+
+describe('getFilesCommentedSinceViewed', () => {
+  it('returns viewed files with an unresolved comment or reply newer than the viewed time', () => {
+    const reply = {
+      id: 'reply',
+      author: { name: 'Agent', type: 'agent' as const },
+      body: 'Follow-up',
+      createdAt: '2026-03-17T14:00:00Z',
+    };
+    const files = getFilesCommentedSinceViewed(
+      [
+        makeThread({ id: 'old', filePath: 'src/old.ts' }),
+        makeThread({ id: 'new', filePath: 'src/new.ts' }),
+        makeThread({ id: 'reply', filePath: 'src/reply.ts', comments: [...makeThread().comments, reply] }),
+        makeThread({ id: 'resolved', filePath: 'src/resolved.ts', status: 'resolved' }),
+        makeThread({ id: 'unviewed', filePath: 'src/unviewed.ts' }),
+      ],
+      {
+        'src/old.ts': '2026-03-17T13:00:00Z',
+        'src/new.ts': '2026-03-17T11:00:00Z',
+        'src/reply.ts': '2026-03-17T13:00:00Z',
+        'src/resolved.ts': '2026-03-17T11:00:00Z',
+      },
+    );
+
+    expect(Array.from(files).sort()).toEqual(['src/new.ts', 'src/reply.ts']);
   });
 });
 

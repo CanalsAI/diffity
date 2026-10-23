@@ -128,12 +128,8 @@ export async function fetchSession(): Promise<{ id: string; ref: string; headHas
   return res.json();
 }
 
-export async function fetchThreads(sessionId: string, status?: string): Promise<CommentThread[]> {
-  const res = await fetch(buildUrl('/api/threads', { session: sessionId, status }));
-  if (!res.ok) {
-    return [];
-  }
-  return res.json();
+export function fetchThreads(sessionId: string, status?: string): Promise<CommentThread[]> {
+  return apiFetch(buildUrl('/api/threads', { session: sessionId, status }));
 }
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
@@ -195,13 +191,13 @@ export function deleteComment(commentId: string): Promise<void> {
   return apiVoid(`/api/comments/${commentId}`, { method: 'DELETE' });
 }
 
-export async function fetchViewedFiles(ref?: string): Promise<string[]> {
-  const res = await fetch(buildUrl('/api/viewed', { ref }));
-  if (!res.ok) {
-    return [];
-  }
-  const json = (await res.json()) as { viewed: string[] };
-  return json.viewed;
+export interface ViewedFiles {
+  viewed: string[];
+  viewedAt: Record<string, string>;
+}
+
+export function fetchViewedFiles(ref?: string): Promise<ViewedFiles> {
+  return apiFetch(buildUrl('/api/viewed', { ref }));
 }
 
 export function markFileViewed(filePath: string, ref?: string): Promise<void> {
