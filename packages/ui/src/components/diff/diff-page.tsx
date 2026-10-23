@@ -143,11 +143,12 @@ export function DiffPage() {
     // Files the server no longer reports as viewed changed since they were
     // marked, so reopen them to show the change.
     const unviewed = [...reviewedFiles].filter((path) => !serverViewed.viewed.includes(path));
+    const newlyViewed = serverViewed.viewed.filter((path) => !reviewedFiles.has(path));
     setReviewedFiles(new Set(serverViewed.viewed));
-    if (serverViewed.viewed.length > 0 || unviewed.length > 0) {
+    if (newlyViewed.length > 0 || unviewed.length > 0) {
       setCollapsedFiles((prev) => {
         const next = new Set(prev);
-        for (const path of serverViewed.viewed) {
+        for (const path of newlyViewed) {
           next.add(path);
         }
         for (const path of unviewed) {
@@ -164,7 +165,7 @@ export function DiffPage() {
     // an AI review) don't reopen files they collapsed or marked viewed. A viewed
     // file still opens if it was commented on after being marked, so that
     // comment isn't hidden behind the viewed state.
-    if (!threadsFetched || hasSeededCommentsRef.current) {
+    if (serverThreads === undefined || hasSeededCommentsRef.current) {
       return;
     }
     hasSeededCommentsRef.current = true;
@@ -182,7 +183,7 @@ export function DiffPage() {
       }
       return next;
     });
-  }, [threads, filesWithComments, serverViewed, threadsFetched]);
+  }, [serverThreads, threads, filesWithComments, serverViewed]);
 
   const handleToggleCollapse = useCallback((path: string) => {
     const toggled = manuallyToggledRef.current;

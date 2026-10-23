@@ -196,12 +196,8 @@ export interface ViewedFiles {
   viewedAt: Record<string, string>;
 }
 
-export async function fetchViewedFiles(ref?: string): Promise<ViewedFiles> {
-  const res = await fetch(buildUrl('/api/viewed', { ref }));
-  if (!res.ok) {
-    return { viewed: [], viewedAt: {} };
-  }
-  return res.json();
+export function fetchViewedFiles(ref?: string): Promise<ViewedFiles> {
+  return apiFetch(buildUrl('/api/viewed', { ref }));
 }
 
 export function markFileViewed(filePath: string, ref?: string): Promise<void> {

@@ -39,7 +39,11 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 
   await Promise.all([
     queryClient.ensureQueryData(diffOptions(false, ref)),
-    queryClient.ensureQueryData(viewedOptions(ref)),
+    // Viewed state is optional on first load; a failed fetch shouldn't block
+    // the diff. Later refetches throw so react-query keeps the last good data.
+    queryClient.ensureQueryData(viewedOptions(ref)).catch(() =>
+      queryClient.setQueryData(viewedOptions(ref).queryKey, { viewed: [], viewedAt: {} })
+    ),
   ]);
 
   return { ref, view, largeDiff: null };
