@@ -5,11 +5,19 @@ import { getDb } from './db.js';
 interface ViewedRow {
   file_path: string;
   content_hash: string;
+  viewed_at: string;
 }
 
 export interface ViewedRecord {
   filePath: string;
   contentHash: string;
+  viewedAt: string;
+}
+
+// Older rows were written with SQLite's datetime('now'), which is UTC without
+// a zone marker; normalize so they compare correctly against ISO comment times.
+function toIsoTimestamp(value: string): string {
+  return value.includes('T') ? value : `${value.replace(' ', 'T')}Z`;
 }
 
 /**
@@ -39,18 +47,18 @@ export function hashDiffFile(file: DiffFile): string {
 export function getViewedRecords(ref: string): ViewedRecord[] {
   const db = getDb();
   const rows = db.prepare(
-    'SELECT file_path, content_hash FROM viewed_files WHERE ref = ?'
+    'SELECT file_path, content_hash, viewed_at FROM viewed_files WHERE ref = ?'
   ).all(ref) as ViewedRow[];
-  return rows.map((row) => ({ filePath: row.file_path, contentHash: row.content_hash }));
+  return rows.map((row) => ({ filePath: row.file_path, contentHash: row.content_hash, viewedAt: toIsoTimestamp(row.viewed_at) }));
 }
 
 export function setViewedFile(ref: string, filePath: string, contentHash: string): void {
   const db = getDb();
   db.prepare(`
     INSERT INTO viewed_files (ref, file_path, content_hash, viewed_at)
-    VALUES (?, ?, ?, datetime('now'))
+    VALUES (?, ?, ?, ?)
     ON CONFLICT(ref, file_path) DO UPDATE SET content_hash = excluded.content_hash, viewed_at = excluded.viewed_at
-  `).run(ref, filePath, contentHash);
+  `).run(ref, filePath, contentHash, new Date().toISOString());
 }
 
 export function unsetViewedFile(ref: string, filePath: string): void {

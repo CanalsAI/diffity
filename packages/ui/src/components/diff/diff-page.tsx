@@ -21,7 +21,7 @@ import { refreshDiffWithGate } from '../../lib/large-diff-gate';
 import { toast } from 'sonner';
 import { type ViewMode, getFilePath, getAutoCollapsedPaths } from '../../lib/diff-utils';
 import { sortFilesByTree } from '../../lib/file-tree';
-import { buildFirstOpenThreadByFile, buildThreadCountsByFile } from '../../lib/comment-navigation';
+import { buildFirstOpenThreadByFile, buildThreadCountsByFile, getFilesCommentedSinceViewed } from '../../lib/comment-navigation';
 import { getHunkHeaders, scrollToElement } from '../../lib/dom-utils';
 import { findMatches, focusSearchInput } from '../../lib/diff-search';
 import { requestHostClose, shouldRequestHostClose } from '../../lib/embedding';
@@ -52,13 +52,12 @@ export function DiffPage() {
   const [reviewedFiles, setReviewedFiles] = useState<Set<string>>(new Set());
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
   const manuallyToggledRef = useRef<Set<string>>(new Set());
-  const prevFilesWithCommentsRef = useRef<Set<string>>(new Set());
+  const knownPathsRef = useRef<Set<string>>(new Set());
   const hasSeededCommentsRef = useRef(false);
   const [pendingSelection, setPendingSelection] = useState<LineSelection | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
   const diffViewRef = useRef<DiffViewHandle>(null);
   const currentFileIdx = useRef(0);
-  const initializedDiffRef = useRef<typeof diff>(null);
   const initializedAutoCollapseRef = useRef<boolean | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,36 +108,50 @@ export function DiffPage() {
     if (!diff) {
       return;
     }
-    if (diff === initializedDiffRef.current && autoCollapse === initializedAutoCollapseRef.current) {
-      return;
-    }
-    initializedDiffRef.current = diff;
+    const autoCollapseChanged = initializedAutoCollapseRef.current !== null && autoCollapse !== initializedAutoCollapseRef.current;
     initializedAutoCollapseRef.current = autoCollapse;
 
-    const autoCollapsed = autoCollapse ? getAutoCollapsedPaths(diff.files) : new Set<string>();
-    for (const path of filesWithComments) {
-      autoCollapsed.delete(path);
-    }
-    for (const path of manuallyToggledRef.current) {
-      if (autoCollapsed.has(path)) {
-        autoCollapsed.delete(path);
-      } else {
-        autoCollapsed.add(path);
+    // A reloaded diff (refresh, whitespace toggle) keeps the collapse state of
+    // files the user has already seen; only files new to this page get the
+    // default. Toggling auto-collapse re-applies it to generated files the user
+    // hasn't touched or marked viewed.
+    const autoCollapsible = getAutoCollapsedPaths(diff.files);
+    const known = knownPathsRef.current;
+    setCollapsedFiles((prev) => {
+      const next = new Set<string>();
+      for (const file of diff.files) {
+        const path = getFilePath(file);
+        const reapply = autoCollapseChanged && autoCollapsible.has(path)
+          && !manuallyToggledRef.current.has(path) && !reviewedFiles.has(path);
+        if (known.has(path) && !reapply) {
+          if (prev.has(path)) {
+            next.add(path);
+          }
+        } else if (autoCollapse && autoCollapsible.has(path) && !filesWithComments.has(path)) {
+          next.add(path);
+        }
       }
-    }
-    setCollapsedFiles(autoCollapsed);
+      return next;
+    });
+    knownPathsRef.current = new Set(diff.files.map((file) => getFilePath(file)));
   }, [diff, autoCollapse]);
 
   useEffect(() => {
     if (!serverViewed) {
       return;
     }
-    setReviewedFiles(new Set(serverViewed));
-    if (serverViewed.length > 0) {
+    // Files the server no longer reports as viewed changed since they were
+    // marked, so reopen them to show the change.
+    const unviewed = [...reviewedFiles].filter((path) => !serverViewed.viewed.includes(path));
+    setReviewedFiles(new Set(serverViewed.viewed));
+    if (serverViewed.viewed.length > 0 || unviewed.length > 0) {
       setCollapsedFiles((prev) => {
         const next = new Set(prev);
-        for (const path of serverViewed) {
+        for (const path of serverViewed.viewed) {
           next.add(path);
+        }
+        for (const path of unviewed) {
+          next.delete(path);
         }
         return next;
       });
@@ -146,47 +159,30 @@ export function DiffPage() {
   }, [serverViewed]);
 
   useEffect(() => {
-    // Expand a file to surface its comments only when it *newly* enters the
-    // commented set — never re-expand every commented file on each change, so
-    // commenting on one file doesn't re-open others the user had collapsed.
-    //
-    // Viewed files are the wrinkle. Comments that already existed when the diff
-    // first loaded must not pop open a file the user marked viewed (that's what
-    // "viewed" means, and it must hold whichever of the viewed/threads queries
-    // resolves first). But a comment that *arrives* later — e.g. from an AI
-    // review dropping feedback while you watch — should re-surface its file even
-    // if viewed. So skip viewed files only on the initial seed of the set.
-    const prev = prevFilesWithCommentsRef.current;
-    const initialSeed = !hasSeededCommentsRef.current;
-    const newlyCommented: string[] = [];
-    for (const path of filesWithComments) {
-      if (prev.has(path)) {
-        continue;
-      }
-      if (initialSeed && reviewedFiles.has(path)) {
-        continue;
-      }
-      newlyCommented.push(path);
-    }
-    prevFilesWithCommentsRef.current = filesWithComments;
-    if (threadsFetched) {
-      hasSeededCommentsRef.current = true;
-    }
-    if (newlyCommented.length === 0) {
+    // Surface commented files once, when threads first load. After that the
+    // user owns collapse state, so comments arriving while they read (e.g. from
+    // an AI review) don't reopen files they collapsed or marked viewed. A viewed
+    // file still opens if it was commented on after being marked, so that
+    // comment isn't hidden behind the viewed state.
+    if (!threadsFetched || hasSeededCommentsRef.current) {
       return;
     }
-    setCollapsedFiles((prevCollapsed) => {
-      let changed = false;
-      const next = new Set(prevCollapsed);
-      for (const path of newlyCommented) {
-        if (next.has(path)) {
-          next.delete(path);
-          changed = true;
-        }
+    hasSeededCommentsRef.current = true;
+    const commentedSinceViewed = getFilesCommentedSinceViewed(threads, serverViewed.viewedAt);
+    const toExpand = [...filesWithComments].filter(
+      (path) => !serverViewed.viewed.includes(path) || commentedSinceViewed.has(path),
+    );
+    if (toExpand.length === 0) {
+      return;
+    }
+    setCollapsedFiles((prev) => {
+      const next = new Set(prev);
+      for (const path of toExpand) {
+        next.delete(path);
       }
-      return changed ? next : prevCollapsed;
+      return next;
     });
-  }, [filesWithComments, reviewedFiles, threadsFetched]);
+  }, [threads, filesWithComments, serverViewed, threadsFetched]);
 
   const handleToggleCollapse = useCallback((path: string) => {
     const toggled = manuallyToggledRef.current;

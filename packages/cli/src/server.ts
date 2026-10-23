@@ -598,10 +598,11 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
           const ref = url.searchParams.get('ref');
           const hashByPath = buildViewedHashByPath(ref);
           const records = getViewedRecords(viewedRefKey(ref));
-          const viewed = records
-            .filter((record) => hashByPath.get(record.filePath) === record.contentHash)
-            .map((record) => record.filePath);
-          sendJson(res, { viewed });
+          const current = records.filter((record) => hashByPath.get(record.filePath) === record.contentHash);
+          sendJson(res, {
+            viewed: current.map((record) => record.filePath),
+            viewedAt: Object.fromEntries(current.map((record) => [record.filePath, record.viewedAt])),
+          });
           return;
         }
 
