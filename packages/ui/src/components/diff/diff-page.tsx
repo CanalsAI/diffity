@@ -142,8 +142,12 @@ export function DiffPage() {
     }
     // Files the server no longer reports as viewed changed since they were
     // marked, so reopen them to show the change.
+    // A viewed file with newer comments stays open even when its viewed state
+    // only arrives now (e.g. after a failed first load), so the comment isn't
+    // hidden.
     const unviewed = [...reviewedFiles].filter((path) => !serverViewed.viewed.includes(path));
-    const newlyViewed = serverViewed.viewed.filter((path) => !reviewedFiles.has(path));
+    const commentedSinceViewed = getFilesCommentedSinceViewed(threads, serverViewed.viewedAt);
+    const newlyViewed = serverViewed.viewed.filter((path) => !reviewedFiles.has(path) && !commentedSinceViewed.has(path));
     setReviewedFiles(new Set(serverViewed.viewed));
     if (newlyViewed.length > 0 || unviewed.length > 0) {
       setCollapsedFiles((prev) => {
