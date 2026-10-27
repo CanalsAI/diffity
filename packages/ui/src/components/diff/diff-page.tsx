@@ -537,6 +537,8 @@ export function DiffPage() {
         diff={diff || undefined}
         diffRef={refParam}
         threads={threads}
+        commentsEnabled={reviewsEnabled}
+        commentActions={commentActions}
         onDeleteAllComments={commentActions.deleteAllThreads}
         onScrollToThread={handleScrollToThread}
         repoName={info?.name || null}
