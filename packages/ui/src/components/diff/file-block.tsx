@@ -63,6 +63,8 @@ interface FileBlockProps {
   highlighted?: boolean;
   onHighlightEnd?: () => void;
   forceRenderLargeDiff?: boolean;
+  largeDiffExpanded: boolean;
+  onExpandLargeDiff: (path: string) => void;
 }
 
 interface GapExpansion {
@@ -76,13 +78,12 @@ export function FileBlock(props: FileBlockProps) {
   const {
     file, viewMode, collapsed, onToggleCollapse, reviewed, onReviewedChange, highlightLine, baseRef, canRevert, onRevert,
     threads: allThreads, commentsEnabled, commentActions, onAddThread: rawAddThread, pendingSelection, onPendingSelectionChange,
-    highlighted, onHighlightEnd, forceRenderLargeDiff,
+    highlighted, onHighlightEnd, forceRenderLargeDiff, largeDiffExpanded, onExpandLargeDiff,
   } = props;
 
   const totalLines = getTotalLineCount(file);
   const isLargeDiff = totalLines >= LARGE_DIFF_LINE_THRESHOLD;
 
-  const [largeDiffExpanded, setLargeDiffExpanded] = useState(false);
   const fileRef = useRef<HTMLDivElement>(null);
   const scrollOnExpand = useRef(false);
   const [expansions, setExpansions] = useState<Map<string, GapExpansion>>(new Map());
@@ -455,7 +456,7 @@ export function FileBlock(props: FileBlockProps) {
               onClick={() => {
                 scrollOnExpand.current = collapsed || isDiffHidden;
                 if (collapsed) onToggleCollapse(filePath);
-                setLargeDiffExpanded(true);
+                onExpandLargeDiff(filePath);
                 void handleExpand(gaps, 'all');
               }}
             >
@@ -515,7 +516,7 @@ export function FileBlock(props: FileBlockProps) {
                 className="text-accent hover:underline cursor-pointer font-medium"
                 onClick={() => {
                   scrollOnExpand.current = true;
-                  setLargeDiffExpanded(true);
+                  onExpandLargeDiff(filePath);
                 }}
               >
                 Load diff

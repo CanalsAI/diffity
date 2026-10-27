@@ -84,6 +84,11 @@ export function DiffView(props: DiffViewProps) {
   const { highlight } = useHighlighter();
   const scrollElementRef = useRef<HTMLElement>(null);
   const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null);
+  const [expandedLargeDiffs, setExpandedLargeDiffs] = useState<Set<string>>(new Set());
+
+  const handleExpandLargeDiff = useCallback((path: string) => {
+    setExpandedLargeDiffs((prev) => new Set(prev).add(path));
+  }, []);
 
   useSearchHighlight({
     scrollElement: scrollEl,
@@ -322,6 +327,8 @@ export function DiffView(props: DiffViewProps) {
                 pendingSelection={pendingSelection}
                 onPendingSelectionChange={onPendingSelectionChange}
                 forceRenderLargeDiff={searchExpandFile === filePath}
+                largeDiffExpanded={expandedLargeDiffs.has(filePath)}
+                onExpandLargeDiff={handleExpandLargeDiff}
               />
             </div>
           );
