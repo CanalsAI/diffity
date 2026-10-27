@@ -19,6 +19,7 @@ export function GeneralComments(props: GeneralCommentsProps) {
   const threads = allThreads.filter(t => t.filePath === GENERAL_THREAD_FILE_PATH);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [collapsedThreads, setCollapsedThreads] = useState<Record<string, boolean>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
@@ -98,17 +99,40 @@ export function GeneralComments(props: GeneralCommentsProps) {
           )}
           {threads.length > 0 ? (
             <div className="p-3 space-y-3">
-              {threads.map((thread, index) => (
+              {threads.map((thread, index) => (collapsedThreads[thread.id] ?? isThreadResolved(thread)) ? (
+                <button
+                  key={thread.id}
+                  data-thread-id={thread.id}
+                  onClick={() => setCollapsedThreads(prev => ({ ...prev, [thread.id]: false }))}
+                  className="flex items-center gap-1.5 px-2 py-1 text-xs text-text-muted hover:text-text-secondary hover:bg-hover rounded-md transition-colors cursor-pointer"
+                >
+                  <CommentIcon className="w-3.5 h-3.5" />
+                  <span>Thread #{index + 1}</span>
+                  <span>{thread.comments.length} comment{thread.comments.length !== 1 ? 's' : ''}</span>
+                  {isThreadResolved(thread) && <ThreadBadge variant="resolved" />}
+                </button>
+              ) : (
                 <ThreadCard
                   key={thread.id}
                   thread={thread}
                   onReply={(body) => commentActions.addReply(thread.id, body, DEFAULT_AUTHOR)}
-                  onResolve={() => commentActions.resolveThread(thread.id)}
+                  onResolve={() => {
+                    commentActions.resolveThread(thread.id);
+                    setCollapsedThreads(prev => ({ ...prev, [thread.id]: true }));
+                  }}
                   onUnresolve={() => commentActions.unresolveThread(thread.id)}
                   onEditComment={(commentId, body) => commentActions.editComment(commentId, body)}
                   onDeleteComment={(commentId) => commentActions.deleteComment(thread.id, commentId)}
                   onDeleteThread={() => commentActions.deleteThread(thread.id)}
                   className="bg-bg-secondary"
+                  headerRight={
+                    <button
+                      onClick={() => setCollapsedThreads(prev => ({ ...prev, [thread.id]: true }))}
+                      className="text-[11px] text-text-muted hover:text-text-secondary transition-colors cursor-pointer ml-2"
+                    >
+                      Collapse
+                    </button>
+                  }
                   headerLeft={
                     <>
                       <span className="text-[11px] text-text-muted font-mono">Thread #{index + 1}</span>
