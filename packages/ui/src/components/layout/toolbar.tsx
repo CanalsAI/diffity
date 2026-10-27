@@ -15,6 +15,8 @@ import { DiffStats } from '../diff/diff-stats';
 import { DiffSearchBar } from '../diff/diff-search-bar';
 import { GitHubDialog } from './github-dialog';
 import { CommentToolbarActions } from '../comments/comment-toolbar-actions';
+import { GeneralComments } from '../comments/general-comments';
+import type { CommentActions } from '../../hooks/use-comment-actions';
 import { OptionsMenu, menuItemClass } from './options-menu';
 import { ChangesSelect } from './changes-select';
 import { GENERAL_THREAD_FILE_PATH } from '../comments/types';
@@ -35,6 +37,8 @@ interface ToolbarProps {
   diff?: ParsedDiff;
   diffRef?: string;
   threads: CommentThread[];
+  commentsEnabled: boolean;
+  commentActions: CommentActions;
   onDeleteAllComments: () => void;
   onScrollToThread: (threadId: string, filePath: string) => void;
   repoName: string | null;
@@ -137,6 +141,8 @@ export function Toolbar(props: ToolbarProps) {
     diff,
     diffRef,
     threads,
+    commentsEnabled,
+    commentActions,
     onDeleteAllComments,
     onScrollToThread,
     repoName,
@@ -164,7 +170,7 @@ export function Toolbar(props: ToolbarProps) {
   ], []);
 
   return (
-    <div className="flex items-center gap-3 px-4 py-1.5 bg-bg-secondary border-b border-border font-sans text-xs">
+    <div className="relative z-40 flex items-center gap-3 px-4 py-1.5 bg-bg-secondary border-b border-border font-sans text-xs">
       <div className="flex items-center gap-2.5 min-w-0 shrink">
         {repoName && <span className="font-semibold text-text text-sm truncate">{repoName}</span>}
         {branch && (
@@ -204,6 +210,7 @@ export function Toolbar(props: ToolbarProps) {
           onPrev={onSearchPrev}
         />
         <SegmentedToggle options={viewModeOptions} value={viewMode} onChange={onViewModeChange} />
+        {commentsEnabled && <GeneralComments threads={threads} commentActions={commentActions} />}
         <CommentToolbarActions
           threads={threads}
           onScrollToThread={onScrollToThread}
