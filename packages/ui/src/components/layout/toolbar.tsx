@@ -170,7 +170,7 @@ export function Toolbar(props: ToolbarProps) {
   ], []);
 
   return (
-    <div className="relative z-30 flex items-center gap-3 px-4 py-1.5 bg-bg-secondary border-b border-border font-sans text-xs">
+    <div className="relative z-40 flex items-center gap-3 px-4 py-1.5 bg-bg-secondary border-b border-border font-sans text-xs">
       <div className="flex items-center gap-2.5 min-w-0 shrink">
         {repoName && <span className="font-semibold text-text text-sm truncate">{repoName}</span>}
         {branch && (
