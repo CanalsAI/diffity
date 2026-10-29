@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { useLoaderData } from 'react-router';
+import { useLoaderData, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDiff } from '../../hooks/use-diff';
 import { useInfo } from '../../hooks/use-info';
@@ -25,6 +25,7 @@ import { buildFirstOpenThreadByFile, buildThreadCountsByFile, getFilesCommentedS
 import { getHunkHeaders, scrollToElement } from '../../lib/dom-utils';
 import { findMatches, focusSearchInput } from '../../lib/diff-search';
 import { requestHostClose, shouldRequestHostClose } from '../../lib/embedding';
+import { saveViewMode } from '../../lib/view-mode';
 import { fetchGitHubDetails, markFileViewed, unmarkFileViewed, type GitHubDetails } from '../../lib/api';
 import type { LineSelection } from '../comments/types';
 import { isThreadResolved } from '../comments/types';
@@ -35,7 +36,17 @@ export function DiffPage() {
     view: 'split' | 'unified' | null;
   }>();
 
-  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode || 'split');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [viewMode, updateViewMode] = useState<ViewMode>(initialViewMode || 'split');
+  const setViewMode = useCallback((mode: ViewMode) => {
+    updateViewMode(mode);
+    saveViewMode(mode);
+    if (searchParams.has('view')) {
+      const params = new URLSearchParams(searchParams);
+      params.set('view', mode);
+      setSearchParams(params, { replace: true, preventScrollReset: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [hideWhitespace, setHideWhitespace] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const { theme, toggleTheme } = useTheme();
