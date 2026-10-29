@@ -14,6 +14,8 @@ import { GitHubIcon } from '../icons/github-icon';
 import { DiffStats } from '../diff/diff-stats';
 import { DiffSearchBar } from '../diff/diff-search-bar';
 import { GitHubDialog } from './github-dialog';
+import { SubmitReviewDialog } from './submit-review-dialog';
+import { RunReviewButton } from './run-review-button';
 import { CommentToolbarActions } from '../comments/comment-toolbar-actions';
 import { GeneralComments } from '../comments/general-comments';
 import type { CommentActions } from '../../hooks/use-comment-actions';
@@ -21,6 +23,7 @@ import { OptionsMenu, menuItemClass } from './options-menu';
 import { ChangesSelect } from './changes-select';
 import { GENERAL_THREAD_FILE_PATH } from '../comments/types';
 import type { ViewMode } from '../../lib/diff-utils';
+import type { GitHubDetails } from '../../lib/api';
 import type { CommentThread } from '../comments/types';
 import { isThreadResolved } from '../comments/types';
 
@@ -44,7 +47,7 @@ interface ToolbarProps {
   repoName: string | null;
   branch: string | null;
   description: string | null;
-  githubDetails?: { prNumber: number; prTitle: string; prUrl: string; prCreatedAt: string; headSha: string; commentCount: number } | null;
+  githubDetails?: GitHubDetails | null;
   sessionId?: string | null;
   onGitHubPulled?: () => void;
   searchQuery: string;
@@ -159,6 +162,7 @@ export function Toolbar(props: ToolbarProps) {
     onSearchPrev,
   } = props;
   const [showGitHub, setShowGitHub] = useState(false);
+  const [showSubmitReview, setShowSubmitReview] = useState(false);
 
   const formatForCopy = useCallback(() => {
     return formatThreadsForCopy(threads, diff, diffRef);
@@ -217,6 +221,17 @@ export function Toolbar(props: ToolbarProps) {
           onDeleteAllComments={onDeleteAllComments}
           formatForCopy={formatForCopy}
         />
+        {githubDetails && commentsEnabled && (
+          <>
+            <RunReviewButton />
+            <button
+              onClick={() => setShowSubmitReview(true)}
+              className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-hover transition-colors cursor-pointer"
+            >
+              Submit review #{githubDetails.prNumber}
+            </button>
+          </>
+        )}
         <OptionsMenu
           theme={theme}
           onToggleTheme={onToggleTheme}
@@ -244,6 +259,10 @@ export function Toolbar(props: ToolbarProps) {
                 Auto-collapse files
                 {autoCollapse && <span className="ml-auto text-accent text-[10px]">On</span>}
               </button>
+              <a className={menuItemClass} href="/prs">
+                <GitHubIcon className="w-3.5 h-3.5" />
+                Pull requests
+              </a>
               <button
                 className={menuItemClass}
                 onClick={() => {
@@ -259,6 +278,14 @@ export function Toolbar(props: ToolbarProps) {
           )}
         />
       </div>
+      {showSubmitReview && githubDetails && (
+        <SubmitReviewDialog
+          details={githubDetails}
+          threads={threads}
+          commentActions={commentActions}
+          onClose={() => setShowSubmitReview(false)}
+        />
+      )}
       {showGitHub && githubDetails && (
         <GitHubDialog
           details={githubDetails}

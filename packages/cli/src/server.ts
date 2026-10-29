@@ -44,6 +44,8 @@ import {
   fetchDetails as fetchGitHubDetails,
   pushComments as pushGitHubComments,
   pullComments as pullGitHubComments,
+  submitReview as submitGitHubReview,
+  type ReviewEvent,
   type PrComment,
 } from '@diffity/github';
 import { findOrCreateSession } from './session.js';
@@ -57,6 +59,10 @@ import {
 } from './viewed.js';
 import { handleReviewRoute } from './review-routes.js';
 import { handleTourRoute } from './tour-routes.js';
+import { handlePrRoute } from './pr-routes.js';
+import { handleAskRoute } from './ask-routes.js';
+import { isMainAgentAvailable } from './main-agent.js';
+import { isReviewRunning, startReview } from './review-run.js';
 import { sendJson, sendError, readBody } from './http-utils.js';
 import {
   registerInstance,
@@ -185,7 +191,13 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
   }
 
   const githubRemote = detectGitHubRemote();
+
+  function prDetails() {
+    return githubRemote ? fetchGitHubDetails(githubRemote.owner, githubRemote.repo) : Promise.resolve(null);
+  }
   const uiDir = join(__dirname, 'ui/client');
+
+  const askAvailable = isMainAgentAvailable();
 
   let editorAvailable: 'vscode' | null = null;
   try {
@@ -411,6 +423,7 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
             sessionId,
             github: githubRemote,
             editor: editorAvailable,
+            askAgent: askAvailable,
           });
           return;
         }
@@ -420,13 +433,12 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
             sendJson(res, null);
             return;
           }
-          const details = fetchGitHubDetails(githubRemote.owner, githubRemote.repo);
-          sendJson(res, details);
+          sendJson(res, await prDetails());
           return;
         }
 
         if (pathname === '/api/github/push-comments' && req.method === 'POST') {
-          const details = githubRemote ? fetchGitHubDetails(githubRemote.owner, githubRemote.repo) : null;
+          const details = await prDetails();
           if (!githubRemote || !details?.headSha) {
             sendError(res, 400, 'No GitHub PR detected');
             return;
@@ -457,12 +469,66 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
           return;
         }
 
+        if (pathname === '/api/github/submit-review' && req.method === 'POST') {
+          const body = JSON.parse(await readBody(req));
+          const event = body.event as ReviewEvent;
+          const comments = Array.isArray(body.comments) ? body.comments as PrComment[] : [];
+          const summary = typeof body.body === 'string' ? body.body.trim() : '';
+          if (!['COMMENT', 'APPROVE', 'REQUEST_CHANGES'].includes(event)) {
+            sendError(res, 400, 'Invalid review event');
+            return;
+          }
+          if (event !== 'APPROVE' && !summary && comments.length === 0) {
+            sendError(res, 400, 'Add a summary or at least one comment');
+            return;
+          }
+          const details = await prDetails();
+          if (!githubRemote || !details) {
+            sendError(res, 400, 'No GitHub PR detected');
+            return;
+          }
+          if (event !== 'COMMENT' && details.isOwnPr) {
+            sendError(res, 400, "You can't approve or request changes on your own pull request");
+            return;
+          }
+          if (comments.length > 0 && getHeadHash() !== details.headSha) {
+            sendError(res, 409, 'Local checkout is out of sync with the PR head. Reopen the PR to refresh it.');
+            return;
+          }
+          try {
+            sendJson(res, submitGitHubReview(githubRemote.owner, githubRemote.repo, details.prNumber, details.headSha, event, summary, comments));
+          } catch (err) {
+            sendError(res, 502, `GitHub rejected the review: ${err instanceof Error ? err.message : err}`);
+          }
+          return;
+        }
+
+        if (pathname === '/api/review/status' && req.method === 'GET') {
+          sendJson(res, { running: isReviewRunning() });
+          return;
+        }
+
+        if (pathname === '/api/review/run' && req.method === 'POST') {
+          if (isReviewRunning()) {
+            sendError(res, 409, 'A review is already running');
+            return;
+          }
+          const details = await prDetails();
+          if (!details) {
+            sendError(res, 400, 'No GitHub PR detected');
+            return;
+          }
+          startReview(details.prUrl);
+          sendJson(res, { ok: true });
+          return;
+        }
+
         if (pathname === '/api/github/pull-comments' && req.method === 'POST') {
           if (!githubRemote) {
             sendError(res, 400, 'No GitHub repo detected');
             return;
           }
-          const details = fetchGitHubDetails(githubRemote.owner, githubRemote.repo);
+          const details = await prDetails();
           if (!details) {
             sendError(res, 400, 'No GitHub PR detected');
             return;
@@ -638,6 +704,14 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
           const refParam = url.searchParams.get('ref');
           unsetViewedFile(viewedRefKey(refParam), path);
           sendJson(res, { ok: true });
+          return;
+        }
+
+        if (await handlePrRoute(req, res, pathname, url)) {
+          return;
+        }
+
+        if (handleAskRoute(req, res, pathname)) {
           return;
         }
 

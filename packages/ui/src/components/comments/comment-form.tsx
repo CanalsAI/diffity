@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { submitWithAsk } from '../../lib/ask-intent';
+import { useAskAvailable } from '../../hooks/use-ask-available';
 
 interface CommentFormProps {
   onSubmit: (body: string) => void;
@@ -12,6 +14,7 @@ interface CommentFormProps {
 export function CommentForm(props: CommentFormProps) {
   const { onSubmit, onCancel, placeholder = 'Leave a comment', submitLabel = 'Comment', autoFocus = true, lineLabel } = props;
   const [body, setBody] = useState('');
+  const askAvailable = useAskAvailable();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -20,12 +23,16 @@ export function CommentForm(props: CommentFormProps) {
     }
   }, [autoFocus]);
 
-  const handleSubmit = () => {
+  const handleSubmit = (ask = false) => {
     const trimmed = body.trim();
     if (!trimmed) {
       return;
     }
-    onSubmit(trimmed);
+    if (ask) {
+      submitWithAsk(() => onSubmit(trimmed));
+    } else {
+      onSubmit(trimmed);
+    }
     setBody('');
   };
 
@@ -67,8 +74,17 @@ export function CommentForm(props: CommentFormProps) {
         >
           Cancel
         </button>
+        {askAvailable && (
+          <button
+            onClick={() => handleSubmit(true)}
+            disabled={!body.trim()}
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-bg text-accent border border-border hover:bg-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            {submitLabel} & ask agent
+          </button>
+        )}
         <button
-          onClick={handleSubmit}
+          onClick={() => handleSubmit()}
           disabled={!body.trim()}
           className="px-3 py-1.5 text-xs font-medium rounded-md bg-accent text-white hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
         >

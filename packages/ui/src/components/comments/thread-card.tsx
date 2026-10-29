@@ -3,6 +3,7 @@ import type { CommentThread as CommentThreadType } from './types';
 import { isThreadResolved } from './types';
 import { CommentBubble } from './comment-bubble';
 import { CommentForm } from './comment-form';
+import { AskAgentButton } from './ask-agent-button';
 import { TrashIcon } from '../icons/trash-icon';
 import { cn } from '../../lib/cn';
 
@@ -61,6 +62,7 @@ export function ThreadCard(props: ThreadCardProps) {
               </button>
             )
           )}
+          {!resolved && <AskAgentButton threadId={thread.id} />}
           {headerRight}
           <button
             onClick={onDeleteThread}

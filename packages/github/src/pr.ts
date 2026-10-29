@@ -105,6 +105,20 @@ export function pullComments(owner: string, repo: string, prNumber: number): Pul
   }
 }
 
+function toGitHubComment(comment: PrComment): Record<string, unknown> {
+  const entry: Record<string, unknown> = {
+    path: comment.filePath,
+    body: comment.body,
+    side: comment.side,
+    line: comment.endLine,
+  };
+  if (comment.startLine && comment.startLine !== comment.endLine) {
+    entry.start_line = comment.startLine;
+    entry.start_side = comment.side;
+  }
+  return entry;
+}
+
 function isDuplicate(existing: ExistingComment[], comment: PrComment): boolean {
   return existing.some(e =>
     e.path === comment.filePath &&
@@ -142,17 +156,7 @@ export function pushComments(
     }
 
     try {
-      const payload: Record<string, unknown> = {
-        body: comment.body,
-        commit_id: headSha,
-        path: comment.filePath,
-        side: comment.side,
-        line: comment.endLine,
-      };
-      if (comment.startLine && comment.startLine !== comment.endLine) {
-        payload.start_line = comment.startLine;
-        payload.start_side = comment.side;
-      }
+      const payload = { ...toGitHubComment(comment), commit_id: headSha };
       execSync(
         `gh api repos/${owner}/${repo}/pulls/${prNumber}/comments --method POST --input -`,
         {
@@ -171,4 +175,48 @@ export function pushComments(
   }
 
   return { pushed, skipped, failed, errors };
+}
+
+export type ReviewEvent = 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES';
+
+export interface ReviewResult {
+  url: string | null;
+  posted: number;
+}
+
+// Posts one review (verdict + summary + inline comments) so GitHub sends a single
+// notification. Comments already on the PR are dropped to keep re-submits idempotent.
+export function submitReview(
+  owner: string,
+  repo: string,
+  prNumber: number,
+  headSha: string,
+  event: ReviewEvent,
+  body: string,
+  comments: PrComment[],
+): ReviewResult {
+  const existing = getComments(owner, repo, prNumber);
+  const fresh = comments.filter((comment) => !isDuplicate(existing, comment));
+
+  const payload: Record<string, unknown> = {
+    commit_id: headSha,
+    event,
+    comments: fresh.map(toGitHubComment),
+  };
+  if (body) {
+    payload.body = body;
+  }
+
+  try {
+    const out = execSync(
+      `gh api repos/${owner}/${repo}/pulls/${prNumber}/reviews --method POST --input -`,
+      { input: JSON.stringify(payload), encoding: 'utf-8', stdio: 'pipe', maxBuffer: 10 * 1024 * 1024 },
+    );
+    const review = JSON.parse(out) as { html_url?: string };
+    return { url: review.html_url ?? null, posted: fresh.length };
+  } catch (err) {
+    const stderr = (err as { stderr?: string }).stderr ?? '';
+    const msg = stderr.split('\n').find((l) => l.trim()) ?? (err instanceof Error ? err.message : String(err));
+    throw new Error(msg.trim());
+  }
 }

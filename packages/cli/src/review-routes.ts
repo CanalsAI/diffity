@@ -12,6 +12,7 @@ import {
   type ThreadStatus,
 } from './threads.js';
 import { getCurrentSession } from './session.js';
+import { startAsk } from './ask-routes.js';
 import { sendJson, sendError, withJsonBody } from './http-utils.js';
 
 export function handleReviewRoute(req: IncomingMessage, res: ServerResponse, pathname: string, url: URL): boolean {
@@ -58,6 +59,9 @@ export function handleReviewRoute(req: IncomingMessage, res: ServerResponse, pat
         commentBody as string, author as ThreadAuthor,
         anchorContent as string | undefined,
       );
+      if (body.ask) {
+        startAsk(thread.id);
+      }
       sendJson(res, thread);
     });
     return true;
@@ -72,6 +76,9 @@ export function handleReviewRoute(req: IncomingMessage, res: ServerResponse, pat
         return;
       }
       const comment = addReply(threadReplyMatch[1], commentBody as string, author as ThreadAuthor);
+      if (body.ask) {
+        startAsk(threadReplyMatch[1]);
+      }
       sendJson(res, comment);
     });
     return true;

@@ -6,7 +6,7 @@ import { GitHubIcon } from '../icons/github-icon';
 import { UploadIcon } from '../icons/upload-icon';
 import { DownloadIcon } from '../icons/download-icon';
 import { XIcon } from '../icons/x-icon';
-import { pushCommentsToGitHub, pullCommentsFromGitHub, type GitHubDetails, type PrCommentPayload } from '../../lib/api';
+import { pushCommentsToGitHub, pullCommentsFromGitHub, toPrCommentPayload, type GitHubDetails, type PrCommentPayload } from '../../lib/api';
 import type { CommentThread } from '../comments/types';
 import { GENERAL_THREAD_FILE_PATH, isThreadResolved } from '../comments/types';
 import { useModalEscape } from '../../hooks/use-modal-escape';
@@ -42,13 +42,7 @@ export function GitHubDialog(props: GitHubDialogProps) {
     }
     setPushing(true);
     try {
-      const comments: PrCommentPayload[] = pushableThreads.map(t => ({
-        filePath: t.filePath,
-        side: t.side === 'old' ? 'LEFT' as const : 'RIGHT' as const,
-        startLine: t.startLine !== t.endLine ? t.startLine : null,
-        endLine: t.endLine,
-        body: t.comments[0].body,
-      }));
+      const comments: PrCommentPayload[] = pushableThreads.map(t => toPrCommentPayload(t, t.comments[0].body));
       const result = await pushCommentsToGitHub(comments);
       if (result.failed > 0) {
         const pushedMsg = result.pushed > 0 ? `${result.pushed} pushed, ` : '';

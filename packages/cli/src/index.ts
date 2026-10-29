@@ -21,7 +21,7 @@ import { registerListCommand } from './commands/list.js';
 import { registerPruneCommand } from './commands/prune.js';
 import { registerUpdateCommand } from './commands/update.js';
 import { registerDoctorCommand } from './commands/doctor.js';
-import { registerTreeCommand } from './commands/tree.js';
+import { registerTreeCommand, registerPrsCommand } from './commands/tree.js';
 import { registerKillCommand } from './commands/kill.js';
 import { SKILLS_HASH } from './generated/skills-hash.js';
 
@@ -61,6 +61,7 @@ Common usage:
   $ diffity --new                        Force restart existing instance
 
 Other commands:
+  $ diffity prs                          List and review GitHub PRs
   $ diffity tree                         Browse repository files
   $ diffity tree --dark                  Browse in dark mode
   $ diffity list                         List running instances
@@ -331,6 +332,7 @@ registerPruneCommand(program);
 registerUpdateCommand(program, pkg.version, SKILLS_HASH);
 registerDoctorCommand(program, pkg.version);
 registerTreeCommand(program, pkg.version);
+registerPrsCommand(program, pkg.version);
 registerKillCommand(program);
 registerAgentCommands(program);
 

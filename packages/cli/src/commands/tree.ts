@@ -6,10 +6,19 @@ import { isGitRepo, getRepoRoot, getRepoName } from '@diffity/git';
 import { startServer } from '../server.js';
 import { findInstanceForRepo, findAvailablePort, deregisterInstance, killInstance, checkInstanceHealth } from '../registry.js';
 
-export function registerTreeCommand(program: Command, version: string) {
+interface BrowserCommand {
+  name: string;
+  description: string;
+  label: string;
+  effectiveRef: string;
+}
+
+// `tree` and `prs` open a page of the repo's diffity instance rather than a diff.
+function registerBrowserCommand(program: Command, version: string, command: BrowserCommand) {
+  const { name, description, label, effectiveRef } = command;
   program
-    .command('tree')
-    .description('Open a file browser view of the repository')
+    .command(name)
+    .description(description)
     .option('--port <port>', 'Port to use')
     .option('--no-open', 'Do not open browser automatically')
     .option('--dark', 'Open in dark mode')
@@ -42,11 +51,11 @@ export function registerTreeCommand(program: Command, version: string) {
             urlParams.set('theme', 'dark');
           }
           const qs = urlParams.toString();
-          const url = `http://localhost:${existing.port}/tree${qs ? `?${qs}` : ''}`;
+          const url = `http://localhost:${existing.port}/${name}${qs ? `?${qs}` : ''}`;
 
           if (!opts.quiet) {
             console.log('');
-            console.log(pc.bold('  diffity tree'));
+            console.log(pc.bold(`  diffity ${name}`));
             console.log(`  ${pc.dim('Reusing running instance')}`);
             console.log('');
             console.log(`  ${pc.green('→')} ${pc.cyan(url)}`);
@@ -68,8 +77,8 @@ export function registerTreeCommand(program: Command, version: string) {
           port,
           portIsExplicit: explicitPort,
           diffArgs: [],
-          description: 'Repository file browser',
-          effectiveRef: '__tree__',
+          description: label,
+          effectiveRef,
           version,
           registryInfo: { repoRoot, repoHash, repoName },
         });
@@ -79,12 +88,12 @@ export function registerTreeCommand(program: Command, version: string) {
           urlParams.set('theme', 'dark');
         }
         const qs = urlParams.toString();
-        const url = `http://localhost:${actualPort}/tree${qs ? `?${qs}` : ''}`;
+        const url = `http://localhost:${actualPort}/${name}${qs ? `?${qs}` : ''}`;
 
         if (!opts.quiet) {
           console.log('');
-          console.log(pc.bold('  diffity tree'));
-          console.log(`  ${pc.dim('Repository file browser')}`);
+          console.log(pc.bold(`  diffity ${name}`));
+          console.log(`  ${pc.dim(label)}`);
           console.log('');
           console.log(`  ${pc.green('→')} ${pc.cyan(url)}`);
           console.log(`  ${pc.dim('Press Ctrl+C to stop')}`);
@@ -114,4 +123,22 @@ export function registerTreeCommand(program: Command, version: string) {
         process.exit(1);
       }
     });
+}
+
+export function registerTreeCommand(program: Command, version: string) {
+  registerBrowserCommand(program, version, {
+    name: 'tree',
+    description: 'Open a file browser view of the repository',
+    label: 'Repository file browser',
+    effectiveRef: '__tree__',
+  });
+}
+
+export function registerPrsCommand(program: Command, version: string) {
+  registerBrowserCommand(program, version, {
+    name: 'prs',
+    description: 'Browse and review GitHub pull requests',
+    label: 'Pull requests',
+    effectiveRef: '__prs__',
+  });
 }

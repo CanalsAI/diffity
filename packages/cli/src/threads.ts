@@ -190,6 +190,16 @@ export function getThreadsForSession(sessionId: string, status?: ThreadStatus): 
   return Array.from(threads.values());
 }
 
+export function hasAgentGeneralThreadSince(sessionId: string, since: string): boolean {
+  const row = getDb().prepare(
+    `SELECT 1 FROM comment_threads t
+     JOIN comments c ON c.thread_id = t.id
+     WHERE t.session_id = ? AND t.file_path = '__general__' AND t.created_at >= ? AND c.author_type = 'agent'
+     LIMIT 1`
+  ).get(sessionId, since);
+  return !!row;
+}
+
 export function getThread(idOrPrefix: string): Thread | null {
   const db = getDb();
   let row = db.prepare('SELECT * FROM comment_threads WHERE id = ?').get(idOrPrefix) as ThreadRow | undefined;

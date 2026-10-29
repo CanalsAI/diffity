@@ -1,4 +1,5 @@
 import type { ParsedDiff } from '@diffity/parser';
+import { isAskingDuringSubmit } from './ask-intent';
 import type { CommentThread, CommentAuthor, CommentSide, Comment } from '../components/comments/types';
 
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
@@ -42,6 +43,7 @@ export interface GitHubDetails {
   prTitle: string;
   prUrl: string;
   prCreatedAt: string;
+  isOwnPr: boolean;
   headSha: string;
   commentCount: number;
 }
@@ -56,6 +58,7 @@ export interface RepoInfo {
   sessionId?: string | null;
   github?: GitHubRemote | null;
   editor?: 'vscode' | null;
+  askAgent?: boolean;
 }
 
 export interface Commit {
@@ -147,7 +150,7 @@ export function createThread(data: {
   return apiFetch('/api/threads', {
     method: 'POST',
     headers: JSON_HEADERS,
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, ask: isAskingDuringSubmit() }),
   });
 }
 
@@ -155,7 +158,7 @@ export function replyToThread(threadId: string, body: string, author: CommentAut
   return apiFetch(`/api/threads/${threadId}/reply`, {
     method: 'POST',
     headers: JSON_HEADERS,
-    body: JSON.stringify({ body, author }),
+    body: JSON.stringify({ body, author, ask: isAskingDuringSubmit() }),
   });
 }
 
@@ -259,6 +262,16 @@ export interface PrCommentPayload {
   body: string;
 }
 
+export function toPrCommentPayload(thread: Pick<CommentThread, 'filePath' | 'side' | 'startLine' | 'endLine'>, body: string): PrCommentPayload {
+  return {
+    filePath: thread.filePath,
+    side: thread.side === 'old' ? 'LEFT' : 'RIGHT',
+    startLine: thread.startLine !== thread.endLine ? thread.startLine : null,
+    endLine: thread.endLine,
+    body,
+  };
+}
+
 export async function fetchGitHubDetails(): Promise<GitHubDetails | null> {
   const res = await fetch('/api/github/details');
   if (!res.ok) {
@@ -272,6 +285,21 @@ export function pushCommentsToGitHub(comments: PrCommentPayload[]): Promise<Push
     method: 'POST',
     headers: JSON_HEADERS,
     body: JSON.stringify({ comments }),
+  });
+}
+
+export type ReviewEvent = 'COMMENT' | 'APPROVE' | 'REQUEST_CHANGES';
+
+export interface SubmitReviewResult {
+  url: string | null;
+  posted: number;
+}
+
+export function submitGitHubReview(event: ReviewEvent, body: string, comments: PrCommentPayload[]): Promise<SubmitReviewResult> {
+  return apiFetch('/api/github/submit-review', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ event, body, comments }),
   });
 }
 
@@ -342,4 +370,72 @@ export async function fetchTreeFileContent(filePath: string): Promise<string[]> 
     `/api/tree/file/${encodeURIComponent(filePath)}`,
   );
   return json.content;
+}
+
+export interface PrStatus {
+  label: string;
+  tone: 'success' | 'warning' | 'danger' | 'neutral';
+}
+
+export interface PrListItem {
+  owner: string;
+  repo: string;
+  number: number;
+  title: string;
+  url: string;
+  author: string;
+  updatedAt: string;
+  commentCount: number;
+  labels: { name: string; color: string }[];
+  status: PrStatus;
+}
+
+export interface PrTeam {
+  slug: string;
+  name: string;
+}
+
+export interface PrListResponse {
+  viewer: string | null;
+  org: string | null;
+  teams: PrTeam[];
+  sections: { id: string; title: string; items: PrListItem[] }[];
+}
+
+export interface PrListParams {
+  view: string;
+  updated: string;
+  query: string;
+}
+
+export function fetchPullRequests(params: PrListParams): Promise<PrListResponse> {
+  return apiFetch(buildUrl('/api/prs', {
+    view: params.view,
+    updated: params.updated || undefined,
+    query: params.view === 'custom' ? params.query : undefined,
+  }));
+}
+
+export function openPullRequest(pr: Pick<PrListItem, 'owner' | 'repo' | 'number'>): Promise<{ port: number; ref: string }> {
+  return apiFetch('/api/prs/open', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ owner: pr.owner, repo: pr.repo, number: pr.number }),
+  });
+}
+
+export function askAgent(threadId: string): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/threads/${threadId}/ask`, { method: 'POST' });
+}
+
+export function fetchPendingAsks(): Promise<{ threadIds: string[] }> {
+  return apiFetch('/api/ask/pending');
+}
+
+export function runReview(): Promise<{ ok: boolean }> {
+  return apiFetch('/api/review/run', { method: 'POST' });
+}
+
+export function fetchReviewStatus(): Promise<{ running: boolean }> {
+  return apiFetch('/api/review/status');
 }

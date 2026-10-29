@@ -25,7 +25,7 @@ import { buildFirstOpenThreadByFile, buildThreadCountsByFile, getFilesCommentedS
 import { getHunkHeaders, scrollToElement } from '../../lib/dom-utils';
 import { findMatches, focusSearchInput } from '../../lib/diff-search';
 import { requestHostClose, shouldRequestHostClose } from '../../lib/embedding';
-import { fetchGitHubDetails, markFileViewed, unmarkFileViewed, type GitHubDetails } from '../../lib/api';
+import { fetchGitHubDetails, pullCommentsFromGitHub, markFileViewed, unmarkFileViewed, type GitHubDetails } from '../../lib/api';
 import type { LineSelection } from '../comments/types';
 import { isThreadResolved } from '../comments/types';
 
@@ -38,6 +38,7 @@ export function DiffPage() {
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode || 'split');
   const [hideWhitespace, setHideWhitespace] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const queryClient = useQueryClient();
   const { theme, toggleTheme } = useTheme();
   const { autoCollapse, toggleAutoCollapse } = useAutoCollapse();
   const { data: rawDiff, error } = useDiff(hideWhitespace, refParam);
@@ -83,6 +84,24 @@ export function DiffPage() {
       .then(data => setGithubDetails(data))
       .catch(() => {});
   }, [info?.github]);
+
+  // Bring the PR's existing review threads into the local session once per page
+  // load; the server skips ones already pulled. Best-effort: out-of-sync checkouts
+  // or API errors just leave the manual "Pull from PR" button as the fallback.
+  const autoPulledRef = useRef(false);
+  useEffect(() => {
+    if (!githubDetails || !sessionId || !reviewsEnabled || githubDetails.commentCount === 0 || autoPulledRef.current) {
+      return;
+    }
+    autoPulledRef.current = true;
+    pullCommentsFromGitHub(sessionId)
+      .then((result) => {
+        if (result.pulled > 0) {
+          queryClient.invalidateQueries({ queryKey: ['threads', sessionId] });
+        }
+      })
+      .catch(() => {});
+  }, [githubDetails, sessionId, reviewsEnabled, queryClient]);
 
   const { data: serverViewed } = useViewedFiles(refParam);
   const { data: serverThreads, isFetched: threadsFetched } = useReviewThreads(reviewsEnabled ? sessionId : null);
@@ -451,8 +470,6 @@ export function DiffPage() {
       }
     },
   });
-
-  const queryClient = useQueryClient();
 
   const handleRevert = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['diff'] });

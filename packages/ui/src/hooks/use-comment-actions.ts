@@ -8,6 +8,7 @@ export function useCommentActions(sessionId: string | null, enabled: boolean) {
 
   const invalidateThreads = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['threads', sessionId] });
+    queryClient.invalidateQueries({ queryKey: ['ask-pending'] });
   }, [queryClient, sessionId]);
 
   const addThread = useCallback((filePath: string, side: CommentSide, startLine: number, endLine: number, body: string, author: CommentAuthor, anchorContent?: string) => {
