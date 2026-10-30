@@ -12,12 +12,27 @@ vi.mock('../src/lib/api', async (importOriginal) => ({
   fetchDiffSummary,
 }));
 
-import { clientLoader } from '../src/routes/diff';
+import { clientLoader, shouldRevalidate } from '../src/routes/diff';
 import { allowOneLargeDiffLoad, refreshDiffWithGate } from '../src/lib/large-diff-gate';
 
 function load(search = '') {
   return clientLoader({ request: new Request(`http://localhost/diff${search}`) } as Parameters<typeof clientLoader>[0]);
 }
+
+describe('diff revalidation', () => {
+  it.each([
+    ['?ref=staged&view=split&load=used', '?ref=staged&view=unified&load=used', false],
+    ['?ref=staged&view=split', '?ref=unstaged&view=unified', true],
+    ['?view=split&load=used', '?view=unified&load=new', true],
+    ['?view=split', '?view=split', true],
+  ])('revalidates %s → %s: %s', (current, next, expected) => {
+    expect(shouldRevalidate({
+      currentUrl: new URL(`http://localhost/diff${current}`),
+      nextUrl: new URL(`http://localhost/diff${next}`),
+      defaultShouldRevalidate: true,
+    } as Parameters<typeof shouldRevalidate>[0])).toBe(expected);
+  });
+});
 
 describe('diff loader', () => {
   beforeEach(() => {
@@ -103,6 +118,14 @@ describe('diff loader', () => {
     expect(result.largeDiff).toEqual({ fileCount: 2621, threshold: 500 });
     expect(ensureQueryData).toHaveBeenCalledOnce();
     expect(ensureQueryData.mock.calls[0][0].queryKey).toEqual(['repo-info', 'work']);
+  });
+
+  it('preserves the preferred view through the large-diff prompt', async () => {
+    vi.stubGlobal('document', { cookie: 'diffity-view-mode=unified' });
+    fetchDiffSummary.mockResolvedValue({ fileCount: 2621, threshold: 500 });
+
+    expect((await load()).view).toBe('unified');
+    expect((await load('?view=split')).view).toBe('split');
   });
 
   it('loads the diff after the user opts in', async () => {

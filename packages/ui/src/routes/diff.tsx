@@ -1,4 +1,4 @@
-import { redirect, useRouteError, useNavigate } from "react-router";
+import { redirect, useRouteError, useNavigate, type ShouldRevalidateFunctionArgs } from "react-router";
 import type { Route } from "./+types/diff";
 import { queryClient } from "../lib/query-client";
 import { diffOptions } from "../queries/diff";
@@ -9,11 +9,21 @@ import { ErrorPage } from "../components/error-page";
 import { ChangesSelect } from "../components/layout/changes-select";
 import { isWorkingTreeRef, type ViewMode } from "../lib/diff-utils";
 import { allowOneLargeDiffLoad, consumeLargeDiffLoad, getLargeDiffSummary } from "../lib/large-diff-gate";
+import { getViewMode } from "../lib/view-mode";
+
+export function shouldRevalidate({ currentUrl, nextUrl, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
+  const current = new URL(currentUrl);
+  const next = new URL(nextUrl);
+  current.searchParams.delete("view");
+  next.searchParams.delete("view");
+  const viewChanged = currentUrl.searchParams.get("view") !== nextUrl.searchParams.get("view");
+  return current.href === next.href && viewChanged ? false : defaultShouldRevalidate;
+}
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   const ref = url.searchParams.get("ref") || "work";
-  const view = url.searchParams.get("view") as "split" | "unified" | null;
+  const view = getViewMode(url.searchParams.get("view"));
   const info = await queryClient.ensureQueryData(repoInfoOptions(ref));
   let storedRef: string | null = null;
 
