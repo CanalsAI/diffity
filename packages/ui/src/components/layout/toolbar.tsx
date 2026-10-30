@@ -233,16 +233,14 @@ export function Toolbar(props: ToolbarProps) {
           onDeleteAllComments={onDeleteAllComments}
           formatForCopy={formatForCopy}
         />
+        {commentsEnabled && <RunReviewButton />}
         {githubDetails && commentsEnabled && (
-          <>
-            <RunReviewButton />
-            <button
-              onClick={() => setShowSubmitReview(true)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-hover transition-colors cursor-pointer"
-            >
-              Submit review #{githubDetails.prNumber}
-            </button>
-          </>
+          <button
+            onClick={() => setShowSubmitReview(true)}
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-hover transition-colors cursor-pointer"
+          >
+            Submit review #{githubDetails.prNumber}
+          </button>
         )}
         <OptionsMenu
           theme={theme}

@@ -44,7 +44,7 @@ export function RunReviewButton() {
       onClick={handleClick}
       disabled={running || started}
       className="inline-flex items-center gap-1.5 rounded-md bg-bg-tertiary px-2.5 py-1 text-xs font-medium text-text-secondary hover:text-text transition-colors cursor-pointer disabled:cursor-wait disabled:opacity-70"
-      title="Asks your workspace agent to review this PR and draft its findings as comments"
+      title="Asks your workspace agent to review these changes and draft its findings as comments"
     >
       {(running || started) && <Spinner />}
       {running || started ? 'Reviewing…' : 'Review with your agent'}

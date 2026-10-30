@@ -513,12 +513,9 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
             sendError(res, 409, 'A review is already running');
             return;
           }
+          // On a PR checkout the agent reviews the PR; anywhere else it reviews the local diff.
           const details = await prDetails();
-          if (!details) {
-            sendError(res, 400, 'No GitHub PR detected');
-            return;
-          }
-          startReview(details.prUrl);
+          startReview({ prUrl: details?.prUrl });
           sendJson(res, { ok: true });
           return;
         }
