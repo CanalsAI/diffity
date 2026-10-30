@@ -46,3 +46,10 @@ export function getCurrentSession(): Session | null {
     return null;
   }
 }
+
+export function getSessionById(id: string): Session | null {
+  const row = getDb().prepare(
+    'SELECT id, ref, head_hash FROM review_sessions WHERE id = ?'
+  ).get(id) as { id: string; ref: string; head_hash: string } | undefined;
+  return row ? { id: row.id, ref: row.ref, headHash: row.head_hash } : null;
+}

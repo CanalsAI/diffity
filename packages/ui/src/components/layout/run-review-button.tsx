@@ -5,7 +5,11 @@ import { fetchReviewStatus, runReview } from '../../lib/api';
 import { useAskAvailable } from '../../hooks/use-ask-available';
 import { Spinner } from '../icons/spinner';
 
-export function RunReviewButton() {
+interface RunReviewButtonProps {
+  sessionId: string | null;
+}
+
+export function RunReviewButton({ sessionId }: RunReviewButtonProps) {
   const queryClient = useQueryClient();
   const askAvailable = useAskAvailable();
   const [started, setStarted] = useState(false);
@@ -25,13 +29,13 @@ export function RunReviewButton() {
     }
   }, [started, data, queryClient]);
 
-  if (!askAvailable) {
+  if (!askAvailable || !sessionId) {
     return null;
   }
 
   const handleClick = async () => {
     try {
-      await runReview();
+      await runReview(sessionId!);
       setStarted(true);
       await queryClient.refetchQueries({ queryKey: ['review-status'] });
     } catch (err) {

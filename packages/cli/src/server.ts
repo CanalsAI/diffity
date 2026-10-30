@@ -48,7 +48,7 @@ import {
   type ReviewEvent,
   type PrComment,
 } from '@diffity/github';
-import { findOrCreateSession } from './session.js';
+import { findOrCreateSession, getSessionById } from './session.js';
 import { createThread, addReply, getThreadsForSession } from './threads.js';
 import {
   getViewedRecords,
@@ -513,9 +513,14 @@ export function startServer(options: ServerOptions): Promise<ServerResult> {
             sendError(res, 409, 'A review is already running');
             return;
           }
+          const { sessionId } = JSON.parse(await readBody(req) || '{}');
+          if (typeof sessionId !== 'string' || !getSessionById(sessionId)) {
+            sendError(res, 400, 'Missing or unknown sessionId');
+            return;
+          }
           // On a PR checkout the agent reviews the PR; anywhere else it reviews the local diff.
           const details = await prDetails();
-          startReview({ prUrl: details?.prUrl });
+          startReview({ prUrl: details?.prUrl }, sessionId);
           sendJson(res, { ok: true });
           return;
         }

@@ -4,7 +4,6 @@ import { delimiter, join } from 'node:path';
 import { getRepoRoot } from '@diffity/git';
 import { prNumberFromCheckout } from '@diffity/github';
 import { addReply, createThread } from './threads.js';
-import { getCurrentSession } from './session.js';
 
 // Delivery goes through the workspace's own agent session (`devspaces agent
 // send-message`), the same channel the Diff Viewer's Resolve and Ship It! buttons use.
@@ -20,8 +19,8 @@ export function isMainAgentAvailable(): boolean {
 
 // Replies and comments are written back through this instance's own `diffity agent`
 // commands, run from the checkout so they resolve to this review session.
-export function agentCommand(): string {
-  return `cd ${shellQuote(getRepoRoot())} && node ${shellQuote(process.argv[1])} agent`;
+export function agentCommand(sessionId: string): string {
+  return `cd ${shellQuote(getRepoRoot())} && node ${shellQuote(process.argv[1])} agent --session ${sessionId}`;
 }
 
 // Prepended to every message: the workspace agent receives these in the middle of its own
@@ -68,9 +67,6 @@ export function replyAsSystem(threadId: string, body: string): void {
   addReply(threadId, body, SYSTEM_AUTHOR);
 }
 
-export function generalNoteAsSystem(body: string): void {
-  const session = getCurrentSession();
-  if (session) {
-    createThread(session.id, '__general__', 'new', 0, 0, body, SYSTEM_AUTHOR);
-  }
+export function generalNoteAsSystem(sessionId: string, body: string): void {
+  createThread(sessionId, '__general__', 'new', 0, 0, body, SYSTEM_AUTHOR);
 }

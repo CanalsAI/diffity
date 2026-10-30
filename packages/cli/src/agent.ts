@@ -3,7 +3,7 @@ import { join, isAbsolute } from 'node:path';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { isGitRepo, getDiffFiles, resolveRef, getRepoRoot } from '@diffity/git';
-import { getCurrentSession } from './session.js';
+import { getCurrentSession, getSessionById } from './session.js';
 import {
   createThread,
   getThreadsForSession,
@@ -15,10 +15,24 @@ import {
 } from './threads.js';
 import { createTour, addTourStep, updateTourStatus } from './tours.js';
 
+// The shared "current session" is whichever page loaded last, so a reply to a thread can
+// land in the wrong session when another page loads in between. Commands that act on
+// a specific request pass its session id (--session) to pin it.
+let pinnedSessionId: string | undefined;
+
 function requireSession() {
   if (!isGitRepo()) {
     console.error(pc.red('Error: Not a git repository'));
     process.exit(1);
+  }
+
+  if (pinnedSessionId) {
+    const pinned = getSessionById(pinnedSessionId);
+    if (!pinned) {
+      console.error(pc.red(`Error: Review session not found: ${pinnedSessionId}`));
+      process.exit(1);
+    }
+    return pinned;
   }
 
   const session = getCurrentSession();
@@ -86,6 +100,10 @@ export function registerAgentCommands(program: Command): void {
   const agent = program
     .command('agent')
     .description('Agent commands for interacting with review comments')
+    .option('--session <id>', 'Act on this review session instead of the most recently opened one')
+    .hook('preAction', (thisCommand) => {
+      pinnedSessionId = thisCommand.opts().session;
+    })
     .addHelpText('after', `
 Examples:
   $ diffity agent list --status open --json

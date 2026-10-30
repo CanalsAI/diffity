@@ -233,7 +233,7 @@ export function Toolbar(props: ToolbarProps) {
           onDeleteAllComments={onDeleteAllComments}
           formatForCopy={formatForCopy}
         />
-        {commentsEnabled && <RunReviewButton />}
+        {commentsEnabled && <RunReviewButton sessionId={sessionId ?? null} />}
         {githubDetails && commentsEnabled && (
           <button
             onClick={() => setShowSubmitReview(true)}

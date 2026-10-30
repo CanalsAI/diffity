@@ -1,4 +1,4 @@
-import { getCurrentSession } from './session.js';
+import { getSessionById } from './session.js';
 import { hasAgentGeneralThreadSince } from './threads.js';
 import { getRepoRoot, resolveDiffArgs } from '@diffity/git';
 import { agentCommand, DELEGATION_NOTE, generalNoteAsSystem, sendToMainAgent } from './main-agent.js';
@@ -8,6 +8,7 @@ const DEFAULT_PR_REVIEW_COMMAND = '/canals:review-pr';
 const LOCAL_REVIEW_COMMAND = '/canals:review-local-changes';
 
 let startedAt: number | null = null;
+let reviewSessionId: string | null = null;
 
 // The review is done once the agent posts its summary as a new general comment (the
 // last step of the prompt below), or when it times out.
@@ -15,8 +16,7 @@ export function isReviewRunning(): boolean {
   if (startedAt === null) {
     return false;
   }
-  const session = getCurrentSession();
-  const summaryPosted = !!session && hasAgentGeneralThreadSince(session.id, new Date(startedAt).toISOString());
+  const summaryPosted = !!reviewSessionId && hasAgentGeneralThreadSince(reviewSessionId, new Date(startedAt).toISOString());
   if (summaryPosted || Date.now() - startedAt > REVIEW_TIMEOUT_MS) {
     startedAt = null;
   }
@@ -26,8 +26,8 @@ export function isReviewRunning(): boolean {
 // What to review: a pull request (by URL) or the diff this session is showing.
 export type ReviewTarget = { prUrl: string } | { prUrl?: undefined };
 
-function buildPrompt(target: ReviewTarget): string {
-  const cli = agentCommand();
+function buildPrompt(target: ReviewTarget, sessionId: string): string {
+  const cli = agentCommand(sessionId);
   const root = getRepoRoot();
   const opening = target.prUrl
     ? [
@@ -38,7 +38,7 @@ function buildPrompt(target: ReviewTarget): string {
     : [
         `Run ${LOCAL_REVIEW_COMMAND}`,
         '',
-        `Review the changes the diffity review UI is showing for the repository at ${root}: \`git diff ${resolveDiffArgs(getCurrentSession()?.ref ?? 'work').args.join(' ')}\` run there (plus untracked files).`,
+        `Review the changes the diffity review UI is showing for the repository at ${root}: \`git diff ${resolveDiffArgs(getSessionById(sessionId)?.ref ?? 'work').args.join(' ')}\` run there (plus untracked files).`,
       ];
   return [
     DELEGATION_NOTE,
@@ -53,12 +53,13 @@ function buildPrompt(target: ReviewTarget): string {
   ].join('\n');
 }
 
-export function startReview(target: ReviewTarget): void {
+export function startReview(target: ReviewTarget, sessionId: string): void {
   startedAt = Date.now();
-  sendToMainAgent(buildPrompt(target)).then((failure) => {
+  reviewSessionId = sessionId;
+  sendToMainAgent(buildPrompt(target, sessionId)).then((failure) => {
     if (failure) {
       startedAt = null;
-      generalNoteAsSystem(`**Couldn't start the review:** ${failure}`);
+      generalNoteAsSystem(sessionId, `**Couldn't start the review:** ${failure}`);
     }
   });
 }

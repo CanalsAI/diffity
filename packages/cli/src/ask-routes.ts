@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { getRepoRoot, resolveDiffArgs } from '@diffity/git';
 import { getThread, type Thread } from './threads.js';
-import { getCurrentSession } from './session.js';
+import { getSessionById } from './session.js';
 import { sendJson, sendError } from './http-utils.js';
 import { agentCommand, DELEGATION_NOTE, describePr, replyAsSystem, sendToMainAgent } from './main-agent.js';
 
@@ -56,7 +56,7 @@ function buildPrompt(thread: Thread, ref: string): string {
     describeThread(thread),
     '',
     "Answer the reviewer's latest message concisely in markdown, grounded in the code. If something is a real problem, say so plainly. Then record the answer in the review UI with:",
-    `${agentCommand()} reply ${thread.id} --body "$(cat <<'EOF'`,
+    `${agentCommand(thread.sessionId)} reply ${thread.id} --body "$(cat <<'EOF'`,
     '<your answer>',
     'EOF',
     ')"',
@@ -69,7 +69,7 @@ export function startAsk(threadId: string): void {
   if (!thread || pendingThreadIds().includes(thread.id)) {
     return;
   }
-  const sessionRef = getCurrentSession()?.ref;
+  const sessionRef = getSessionById(thread.sessionId)?.ref;
   const ref = sessionRef && !sessionRef.startsWith('__') ? sessionRef : 'work';
 
   pending.set(thread.id, { startedAt: Date.now(), commentCount: thread.comments.length });

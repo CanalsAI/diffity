@@ -433,8 +433,8 @@ export function fetchPendingAsks(): Promise<{ threadIds: string[] }> {
   return apiFetch('/api/ask/pending');
 }
 
-export function runReview(): Promise<{ ok: boolean }> {
-  return apiFetch('/api/review/run', { method: 'POST' });
+export function runReview(sessionId: string): Promise<{ ok: boolean }> {
+  return apiFetch('/api/review/run', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ sessionId }) });
 }
 
 export function fetchReviewStatus(): Promise<{ running: boolean }> {
