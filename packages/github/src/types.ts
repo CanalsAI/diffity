@@ -59,6 +59,7 @@ export interface PrListItem {
   commentCount: number;
   labels: { name: string; color: string }[];
   status: PrStatus;
+  checkedOut?: boolean;
 }
 
 export interface PrTeam {

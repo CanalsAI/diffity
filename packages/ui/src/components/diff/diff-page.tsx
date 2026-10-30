@@ -562,6 +562,7 @@ export function DiffPage() {
         branch={info?.branch || null}
         description={info?.description || null}
         githubDetails={githubDetails}
+        showPrsLink={!!info?.github}
         sessionId={sessionId}
         onGitHubPulled={() => queryClient.invalidateQueries({ queryKey: ['threads'] })}
         searchQuery={searchQuery}

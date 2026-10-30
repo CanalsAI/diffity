@@ -1,15 +1,16 @@
 import { execFile } from 'node:child_process';
+import { basename } from 'node:path';
 import { exec, execSilent } from './exec.js';
 import type { GitHubRemote, GitHubDetails } from './types.js';
 
-export function getRemote(): { owner: string; repo: string } | null {
+export function parseGitHubRemote(url: string): GitHubRemote | null {
+  const match = url.trim().match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?\/?$/);
+  return match ? { owner: match[1], repo: match[2] } : null;
+}
+
+export function getRemote(): GitHubRemote | null {
   try {
-    const url = exec('git remote get-url origin');
-    const match = url.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
-    if (match) {
-      return { owner: match[1], repo: match[2] };
-    }
-    return null;
+    return parseGitHubRemote(exec('git remote get-url origin'));
   } catch {
     return null;
   }
@@ -59,12 +60,39 @@ interface PrData {
   author: string | null;
 }
 
-// Instances started for a PR worktree sit on a detached HEAD, so `gh pr view` can't
-// infer the PR from the branch; they pin it through DIFFITY_PR_NUMBER instead.
+// PR review worktrees are named `<repo>-pr-<number>`. Fork PRs are checked out detached,
+// so `gh pr view` can't infer the PR from a branch; the folder name says which one.
+export function prCheckoutName(repo: string, number: number): string {
+  return `${repo}-pr-${number}`;
+}
+
+function prNumberFromCheckoutName(name: string): number | null {
+  const match = name.match(/-pr-(\d+)$/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+export function isPrCheckoutName(name: string): boolean {
+  return prNumberFromCheckoutName(name) !== null;
+}
+
+let checkoutPrNumber: number | null | undefined;
+
+// The checkout a server runs in never changes, so the lookup is done once.
+export function prNumberFromCheckout(): number | null {
+  if (checkoutPrNumber === undefined) {
+    try {
+      checkoutPrNumber = prNumberFromCheckoutName(basename(exec('git rev-parse --show-toplevel')));
+    } catch {
+      checkoutPrNumber = null;
+    }
+  }
+  return checkoutPrNumber;
+}
+
 function getPr(owner: string, repo: string): PrData | null {
   try {
-    const pinned = process.env.DIFFITY_PR_NUMBER;
-    const target = pinned && /^\d+$/.test(pinned) ? `${pinned} --repo ${owner}/${repo} ` : '';
+    const number = prNumberFromCheckout();
+    const target = number ? `${number} --repo ${owner}/${repo} ` : '';
     const json = exec(`gh pr view ${target}--json number,title,url,headRefOid,createdAt,author`);
     const data = JSON.parse(json);
     if (data.number && data.url && data.headRefOid) {

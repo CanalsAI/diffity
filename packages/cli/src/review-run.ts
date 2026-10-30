@@ -1,7 +1,7 @@
 import { getCurrentSession } from './session.js';
 import { hasAgentGeneralThreadSince } from './threads.js';
 import { getRepoRoot } from '@diffity/git';
-import { agentCommand, generalNoteAsSystem, sendToMainAgent } from './main-agent.js';
+import { agentCommand, DELEGATION_NOTE, generalNoteAsSystem, sendToMainAgent } from './main-agent.js';
 
 const REVIEW_TIMEOUT_MS = 30 * 60_000;
 const DEFAULT_REVIEW_COMMAND = '/canals:review-pr';
@@ -26,9 +26,11 @@ function buildPrompt(prUrl: string): string {
   const command = process.env.DIFFITY_REVIEW_COMMAND?.trim() || DEFAULT_REVIEW_COMMAND;
   const cli = agentCommand();
   return [
-    `${command} ${prUrl}`,
+    DELEGATION_NOTE,
     '',
-    `[Diffity review] Review the pull request checked out at ${getRepoRoot()}. Delivery override for this run, taking precedence over the skill's own delivery steps:`,
+    `Run ${command} ${prUrl}`,
+    '',
+    `Review the pull request checked out at ${getRepoRoot()}. Delivery override for this run, taking precedence over the skill's own delivery steps:`,
     '- Do not post anything to GitHub and do not wait for approval; the reviewer will edit your drafts in the review UI and submit them.',
     `- Record each validated finding as a draft with: ${cli} comment --file <path> --line <n> [--end-line <n>] [--side new|old] --body "<comment text>"`,
     '  Write each body as the exact comment a reviewer would post: one or two sentences, specific, no severity tags. Only anchor to lines in the PR diff.',

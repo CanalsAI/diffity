@@ -388,6 +388,7 @@ export interface PrListItem {
   commentCount: number;
   labels: { name: string; color: string }[];
   status: PrStatus;
+  checkedOut?: boolean;
 }
 
 export interface PrTeam {
@@ -416,11 +417,11 @@ export function fetchPullRequests(params: PrListParams): Promise<PrListResponse>
   }));
 }
 
-export function openPullRequest(pr: Pick<PrListItem, 'owner' | 'repo' | 'number'>): Promise<{ port: number; ref: string }> {
+export function openPullRequest(pr: Pick<PrListItem, 'owner' | 'repo' | 'number'>): Promise<{ url: string }> {
   return apiFetch('/api/prs/open', {
     method: 'POST',
     headers: JSON_HEADERS,
-    body: JSON.stringify({ owner: pr.owner, repo: pr.repo, number: pr.number }),
+    body: JSON.stringify({ owner: pr.owner, repo: pr.repo, number: pr.number, origin: window.location.origin }),
   });
 }
 

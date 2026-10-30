@@ -6,7 +6,6 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import { toast } from 'sonner';
 import { pullRequestsOptions } from '../../queries/prs';
 import { openPullRequest, type PrListItem, type PrStatus } from '../../lib/api';
-import { instanceOrigin } from '../../lib/instance-url';
 import { useTheme } from '../../hooks/use-theme';
 import { ChevronIcon } from '../icons/chevron-icon';
 import { GitHubIcon } from '../icons/github-icon';
@@ -96,13 +95,10 @@ export function PrsPage() {
     }
     setOpening(prKey(pr));
     try {
-      const { port, ref } = await openPullRequest(pr);
-      const params = new URLSearchParams({ ref });
-      const theme = document.documentElement.getAttribute('data-theme');
-      if (theme) {
-        params.set('theme', theme);
-      }
-      window.location.href = `${instanceOrigin(port)}/diff?${params.toString()}`;
+      const { url } = await openPullRequest(pr);
+      // Opened inside the Diff Viewer frame (its Diffity tab), the review frame has to
+      // replace that frame instead of nesting in it, so navigate the parent frame.
+      window.parent.location.href = url;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to open pull request');
       setOpening(null);
@@ -117,6 +113,7 @@ export function PrsPage() {
         <div className="flex items-center gap-3">
           <GitHubIcon className="w-5 h-5" />
           <h1 className="font-semibold text-base">Pull requests</h1>
+          <a href="/diff" className="text-xs text-text-secondary hover:text-text">← Back to diff</a>
           {data && (
             <span className="text-text-muted text-xs">
               {data.viewer}{data.org ? ` · ${data.org}` : ''}
@@ -294,6 +291,14 @@ function PrRow(props: PrRowProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-[15px] font-semibold truncate">{pr.title}</span>
+          {pr.checkedOut && (
+            <span
+              className="rounded-full border border-accent/40 px-2 text-[11px] font-medium leading-4 text-accent shrink-0"
+              title="Already on this workspace; opens instantly"
+            >
+              Checked out
+            </span>
+          )}
           {pr.labels.map((l) => (
             <button
               key={l.name}

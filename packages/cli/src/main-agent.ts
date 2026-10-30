@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
 import { getRepoRoot } from '@diffity/git';
+import { prNumberFromCheckout } from '@diffity/github';
 import { addReply, createThread } from './threads.js';
 import { getCurrentSession } from './session.js';
 
@@ -23,8 +24,13 @@ export function agentCommand(): string {
   return `cd ${shellQuote(getRepoRoot())} && node ${shellQuote(process.argv[1])} agent`;
 }
 
+// Prepended to every message: the workspace agent receives these in the middle of its own
+// work, so the job runs in a subagent and only a one-line acknowledgement lands in the
+// agent's context.
+export const DELEGATION_NOTE = '[Diffity review] Automated request from the diffity review UI. Do not do this work in your own context: hand the whole message below to a subagent (Agent tool), let it carry out every step including the diffity agent command at the end, then reply here with a single line saying it is done. Do not stop or change what you were doing otherwise.';
+
 export function describePr(): string {
-  const pr = process.env.DIFFITY_PR_NUMBER;
+  const pr = prNumberFromCheckout();
   return pr ? `pull request #${pr}` : 'this change';
 }
 

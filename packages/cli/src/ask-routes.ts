@@ -3,7 +3,7 @@ import { getRepoRoot, resolveDiffArgs } from '@diffity/git';
 import { getThread, type Thread } from './threads.js';
 import { getCurrentSession } from './session.js';
 import { sendJson, sendError } from './http-utils.js';
-import { agentCommand, describePr, replyAsSystem, sendToMainAgent } from './main-agent.js';
+import { agentCommand, DELEGATION_NOTE, describePr, replyAsSystem, sendToMainAgent } from './main-agent.js';
 
 const ASK_TIMEOUT_MS = 20 * 60_000;
 
@@ -48,7 +48,9 @@ function describeThread(thread: Thread): string {
 function buildPrompt(thread: Thread, ref: string): string {
   const diffArgs = resolveDiffArgs(ref).args.join(' ');
   return [
-    `[Diffity review] A reviewer asked a question on ${describePr()}. The code under review is checked out at ${getRepoRoot()}.`,
+    DELEGATION_NOTE,
+    '',
+    `A reviewer asked a question on ${describePr()}. The code under review is checked out at ${getRepoRoot()}.`,
     `The change is \`git diff ${diffArgs}\` run in that directory. Investigate read-only: do not edit files, commit, or post anything to GitHub.`,
     '',
     describeThread(thread),

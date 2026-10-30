@@ -2,8 +2,7 @@ import { execFile } from 'node:child_process';
 import { getViewerLogin } from './detection.js';
 import type { PrListItem, PrListResponse, PrStatus, PrTeam } from './types.js';
 
-const QUERY = `query($q: String!) {
-  search(query: $q, type: ISSUE, first: 100) {
+const PR_FIELDS = `
     nodes {
       ... on PullRequest {
         number
@@ -19,9 +18,7 @@ const QUERY = `query($q: String!) {
         labels(first: 8) { nodes { name color } }
         commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
       }
-    }
-  }
-}`;
+    }`;
 
 interface PrNode {
   number: number;
@@ -77,27 +74,33 @@ function getStatus(node: PrNode): PrStatus {
   return { label: 'Awaiting approval', tone: 'warning' };
 }
 
-async function searchPrs(query: string): Promise<PrListItem[]> {
-  const data = await ghJson<{ data: { search: { nodes: (PrNode | null)[] } } }>([
-    'api', 'graphql', '-f', `query=${QUERY}`, '-f', `q=${query}`,
-  ]);
-  return data.data.search.nodes
+function toPrListItem(node: PrNode): PrListItem {
+  const [owner, repo] = node.repository.nameWithOwner.split('/');
+  return {
+    owner,
+    repo,
+    number: node.number,
+    title: node.title,
+    url: node.url,
+    author: node.author?.login ?? 'ghost',
+    updatedAt: node.updatedAt,
+    commentCount: node.comments.totalCount,
+    labels: node.labels.nodes,
+    status: getStatus(node),
+  };
+}
+
+// Runs every search in one GraphQL request (one aliased `search` field each), so a
+// view costs a single `gh` call however many sections it has.
+async function searchPrs(queries: string[]): Promise<PrListItem[][]> {
+  const variables = queries.map((_, i) => `$q${i}: String!`).join(', ');
+  const fields = queries.map((_, i) => `s${i}: search(query: $q${i}, type: ISSUE, first: 40) { ${PR_FIELDS} }`).join('\n');
+  const args = ['api', 'graphql', '-f', `query=query(${variables}) {\n${fields}\n}`];
+  queries.forEach((q, i) => args.push('-f', `q${i}=${q}`));
+  const { data } = await ghJson<{ data: Record<string, { nodes: (PrNode | null)[] }> }>(args);
+  return queries.map((_, i) => data[`s${i}`].nodes
     .filter((node): node is PrNode => !!node && !!node.number)
-    .map((node) => {
-      const [owner, repo] = node.repository.nameWithOwner.split('/');
-      return {
-        owner,
-        repo,
-        number: node.number,
-        title: node.title,
-        url: node.url,
-        author: node.author?.login ?? 'ghost',
-        updatedAt: node.updatedAt,
-        commentCount: node.comments.totalCount,
-        labels: node.labels.nodes,
-        status: getStatus(node),
-      };
-    });
+    .map(toPrListItem));
 }
 
 const UPDATED_DAYS: Record<string, number> = { week: 7, month: 30, quarter: 90 };
@@ -165,11 +168,11 @@ export async function listPullRequests(options: PrListOptions): Promise<PrListRe
   const meta = { viewer, org, teams };
 
   if (view === 'inbox') {
-    const [needsReview, drafts, waiting, ...teamResults] = await Promise.all([
-      searchPrs(`${base} draft:false review-requested:@me`),
-      searchPrs(`${base} draft:true author:@me`),
-      searchPrs(`${base} draft:false author:@me`),
-      ...(org ? teams.map((t) => searchPrs(`${base} draft:false team-review-requested:${org}/${t.slug}`)) : []),
+    const [needsReview, drafts, waiting, ...teamResults] = await searchPrs([
+      `${base} draft:false review-requested:@me`,
+      `${base} draft:true author:@me`,
+      `${base} draft:false author:@me`,
+      ...(org ? teams.map((t) => `${base} draft:false team-review-requested:${org}/${t.slug}`) : []),
     ]);
     const seen = new Set<string>();
     const direct = dedupe(needsReview, seen);
@@ -191,7 +194,7 @@ export async function listPullRequests(options: PrListOptions): Promise<PrListRe
     if (!org || !team) {
       throw new Error(`Unknown team: ${slug}`);
     }
-    const items = await searchPrs(`${base} team-review-requested:${org}/${team.slug}`);
+    const [items] = await searchPrs([`${base} team-review-requested:${org}/${team.slug}`]);
     return { ...meta, sections: [{ id: view, title: `Review requested from ${team.name}`, items }] };
   }
 
@@ -200,7 +203,7 @@ export async function listPullRequests(options: PrListOptions): Promise<PrListRe
     if (!text) {
       throw new Error('Empty query');
     }
-    const items = await searchPrs(`${base} ${text}`);
+    const [items] = await searchPrs([`${base} ${text}`]);
     return { ...meta, sections: [{ id: 'custom', title: 'Search results', items }] };
   }
 
@@ -208,11 +211,16 @@ export async function listPullRequests(options: PrListOptions): Promise<PrListRe
   if (!simple) {
     throw new Error(`Unknown view: ${view}`);
   }
-  const items = await searchPrs(`${base} ${simple.qualifier}`);
+  const [items] = await searchPrs([`${base} ${simple.qualifier}`]);
   return { ...meta, sections: [{ id: view, title: simple.title, items }] };
 }
 
-export async function getPrBaseRefName(owner: string, repo: string, number: number): Promise<string> {
-  const data = await ghJson<{ baseRefName: string }>(['pr', 'view', String(number), '--repo', `${owner}/${repo}`, '--json', 'baseRefName']);
-  return data.baseRefName;
+export interface PrCheckoutInfo {
+  baseRefName: string;
+  headRefName: string;
+  isCrossRepository: boolean;
+}
+
+export function getPrCheckoutInfo(owner: string, repo: string, number: number): Promise<PrCheckoutInfo> {
+  return ghJson(['pr', 'view', String(number), '--repo', `${owner}/${repo}`, '--json', 'baseRefName,headRefName,isCrossRepository']);
 }

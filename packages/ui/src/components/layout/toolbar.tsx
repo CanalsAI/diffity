@@ -48,6 +48,7 @@ interface ToolbarProps {
   branch: string | null;
   description: string | null;
   githubDetails?: GitHubDetails | null;
+  showPrsLink: boolean;
   sessionId?: string | null;
   onGitHubPulled?: () => void;
   searchQuery: string;
@@ -152,6 +153,7 @@ export function Toolbar(props: ToolbarProps) {
     branch,
     description,
     githubDetails,
+    showPrsLink,
     sessionId,
     onGitHubPulled,
     searchQuery,
@@ -175,7 +177,17 @@ export function Toolbar(props: ToolbarProps) {
 
   return (
     <div className="relative z-40 flex items-center gap-3 px-4 py-1.5 bg-bg-secondary border-b border-border font-sans text-xs">
-      <div className="flex items-center gap-2.5 min-w-0 shrink">
+      <div className="flex items-center gap-2.5 min-w-0 shrink overflow-hidden">
+        {showPrsLink && (
+          <a
+            href="/prs"
+            className="inline-flex items-center gap-1.5 rounded-md bg-bg-tertiary px-2 py-1 text-xs font-medium text-text-secondary hover:text-text transition-colors shrink-0"
+            title="Pull requests that need your review"
+          >
+            <GitHubIcon className="w-3.5 h-3.5" />
+            Pull requests
+          </a>
+        )}
         {repoName && <span className="font-semibold text-text text-sm truncate">{repoName}</span>}
         {branch && (
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-diff-hunk-bg text-diff-hunk-text rounded font-mono text-[11px] shrink-0">
@@ -259,10 +271,6 @@ export function Toolbar(props: ToolbarProps) {
                 Auto-collapse files
                 {autoCollapse && <span className="ml-auto text-accent text-[10px]">On</span>}
               </button>
-              <a className={menuItemClass} href="/prs">
-                <GitHubIcon className="w-3.5 h-3.5" />
-                Pull requests
-              </a>
               <button
                 className={menuItemClass}
                 onClick={() => {
