@@ -19,10 +19,13 @@ export function CommentFormRow(props: CommentFormRowProps) {
   const lineLabel = startLine === endLine
     ? `${startLine}`
     : `${startLine} to ${endLine}`;
+  const draftKey = JSON.stringify(['comment', filePath, side, startLine, endLine]);
 
   const formContent = (
     <div className="max-w-[700px]">
       <CommentForm
+        key={draftKey}
+        draftKey={draftKey}
         onSubmit={(body) => onSubmit(filePath, side, startLine, endLine, body, currentAuthor)}
         onCancel={onCancel}
         lineLabel={`Add a comment on line${startLine !== endLine ? 's' : ''} ${lineLabel}`}

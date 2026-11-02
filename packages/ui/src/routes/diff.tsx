@@ -5,6 +5,7 @@ import { diffOptions } from "../queries/diff";
 import { repoInfoOptions } from "../queries/info";
 import { viewedOptions } from "../queries/viewed";
 import { DiffPage } from "../components/diff/diff-page";
+import { CommentDraftProvider } from "../components/comments/comment-drafts";
 import { ErrorPage } from "../components/error-page";
 import { ChangesSelect } from "../components/layout/changes-select";
 import { isWorkingTreeRef, type ViewMode } from "../lib/diff-utils";
@@ -63,7 +64,7 @@ export default function DiffRoute({ loaderData }: Route.ComponentProps) {
   if (loaderData.largeDiff) {
     return <LargeDiffPrompt fileCount={loaderData.largeDiff.fileCount} diffRef={loaderData.ref} viewMode={loaderData.view || 'split'} />;
   }
-  return <DiffPage key={loaderData.ref} />;
+  return <CommentDraftProvider key={loaderData.ref}><DiffPage /></CommentDraftProvider>;
 }
 
 function LargeDiffPrompt({ fileCount, diffRef, viewMode }: { fileCount: number; diffRef: string; viewMode: ViewMode }) {

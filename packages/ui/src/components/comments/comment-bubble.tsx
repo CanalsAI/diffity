@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
+import { useCommentDraftState } from './comment-drafts';
 import type { Comment } from './types';
 import { PencilIcon } from '../icons/pencil-icon';
 import { TrashIcon } from '../icons/trash-icon';
@@ -55,11 +56,16 @@ function AuthorAvatar(props: { name: string; avatarUrl?: string; type: 'user' | 
 
 export function CommentBubble(props: CommentBubbleProps) {
   const { comment, onEdit, onDelete } = props;
-  const [isEditing, setIsEditing] = useState(false);
-  const [editBody, setEditBody] = useState(comment.body);
+  const [editDraft, setEditDraft, restored] = useCommentDraftState<{ body: string } | null>(`edit:${comment.id}`, null);
+  const isEditing = editDraft !== null;
+  const editBody = editDraft?.body ?? comment.body;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const skipInitialFocus = useRef(restored);
 
   useEffect(() => {
+    if (skipInitialFocus.current) {
+      return;
+    }
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
       textareaRef.current.selectionStart = textareaRef.current.value.length;
@@ -69,17 +75,15 @@ export function CommentBubble(props: CommentBubbleProps) {
   const handleSave = () => {
     const trimmed = editBody.trim();
     if (!trimmed || trimmed === comment.body) {
-      setIsEditing(false);
-      setEditBody(comment.body);
+      setEditDraft(null);
       return;
     }
     onEdit(trimmed);
-    setIsEditing(false);
+    setEditDraft(null);
   };
 
   const handleCancel = () => {
-    setIsEditing(false);
-    setEditBody(comment.body);
+    setEditDraft(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -107,7 +111,10 @@ export function CommentBubble(props: CommentBubbleProps) {
           {!isEditing && (
             <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
-                onClick={() => setIsEditing(true)}
+                onClick={() => {
+                  skipInitialFocus.current = false;
+                  setEditDraft({ body: comment.body });
+                }}
                 className="text-text-muted hover:text-text cursor-pointer"
                 title="Edit comment"
               >
@@ -129,7 +136,7 @@ export function CommentBubble(props: CommentBubbleProps) {
             <textarea
               ref={textareaRef}
               value={editBody}
-              onChange={(e) => setEditBody(e.target.value)}
+              onChange={(e) => setEditDraft({ body: e.target.value })}
               onKeyDown={handleKeyDown}
               rows={3}
               className="w-full px-3 py-2 text-sm bg-bg-tertiary text-text resize-y outline-none rounded-md min-h-[60px]"

@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
+import { useCommentDraftState } from './comment-drafts';
 
 interface CommentFormProps {
   onSubmit: (body: string) => void;
@@ -7,18 +8,24 @@ interface CommentFormProps {
   submitLabel?: string;
   autoFocus?: boolean;
   lineLabel?: string;
+  draftKey?: string;
 }
 
 export function CommentForm(props: CommentFormProps) {
-  const { onSubmit, onCancel, placeholder = 'Leave a comment', submitLabel = 'Comment', autoFocus = true, lineLabel } = props;
-  const [body, setBody] = useState('');
+  const { onSubmit, onCancel, placeholder = 'Leave a comment', submitLabel = 'Comment', autoFocus = true, lineLabel, draftKey } = props;
+  const [body, setBody, restored] = useCommentDraftState(draftKey, '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (autoFocus && textareaRef.current) {
-      textareaRef.current.focus();
+    if (autoFocus && !restored && textareaRef.current) {
+      textareaRef.current.focus({ preventScroll: true });
     }
-  }, [autoFocus]);
+  }, [autoFocus, restored]);
+
+  const handleCancel = () => {
+    setBody('');
+    onCancel();
+  };
 
   const handleSubmit = () => {
     const trimmed = body.trim();
@@ -37,7 +44,7 @@ export function CommentForm(props: CommentFormProps) {
     }
     if (e.key === 'Escape') {
       e.preventDefault();
-      onCancel();
+      handleCancel();
     }
   };
 
@@ -62,7 +69,7 @@ export function CommentForm(props: CommentFormProps) {
       <div className="flex items-center gap-2 px-1.5 pb-1.5">
         <div className="flex-1" />
         <button
-          onClick={onCancel}
+          onClick={handleCancel}
           className="px-3 py-1.5 text-xs font-medium rounded-md text-text-secondary hover:bg-hover transition-colors cursor-pointer"
         >
           Cancel

@@ -16,6 +16,7 @@ import type { CommentThread } from '../comments/types';
 import { GENERAL_THREAD_FILE_PATH, DEFAULT_AUTHOR } from '../comments/types';
 import { useLineSelection } from '../../hooks/use-line-selection';
 import { useCopy } from '../../hooks/use-copy';
+import { useCommentDraftState } from '../comments/comment-drafts';
 import { CopyIcon } from '../icons/copy-icon';
 import { CheckIcon } from '../icons/check-icon';
 import { ChevronUpDownIcon } from '../icons/chevron-up-down-icon';
@@ -83,10 +84,11 @@ export function FileBlock(props: FileBlockProps) {
 
   const totalLines = getTotalLineCount(file);
   const isLargeDiff = totalLines >= LARGE_DIFF_LINE_THRESHOLD;
+  const filePath = getFilePath(file);
 
   const fileRef = useRef<HTMLDivElement>(null);
   const scrollOnExpand = useRef(false);
-  const [expansions, setExpansions] = useState<Map<string, GapExpansion>>(new Map());
+  const [expansions, setExpansions] = useCommentDraftState(`context:${filePath}`, new Map<string, GapExpansion>());
   const [loadingDirection, setLoadingDirection] = useState<'up' | 'down' | 'all' | null>(null);
 
   useEffect(() => {
@@ -98,7 +100,6 @@ export function FileBlock(props: FileBlockProps) {
     return () => cancelAnimationFrame(frame);
   }, [largeDiffExpanded, collapsed]);
 
-  const filePath = getFilePath(file);
   const handleToggleCollapse = () => {
     scrollOnExpand.current = collapsed;
     onToggleCollapse(filePath);
