@@ -13,8 +13,13 @@ interface CommentFormProps {
 
 export function CommentForm(props: CommentFormProps) {
   const { onSubmit, onCancel, placeholder = 'Leave a comment', submitLabel = 'Comment', autoFocus = true, lineLabel, draftKey } = props;
-  const [body, setBody, restored] = useCommentDraftState(draftKey, '');
+  const [draft, setDraft, restored] = useCommentDraftState<{ body: string } | null>(draftKey, null);
+  const body = draft?.body ?? '';
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    setDraft((previous) => previous ?? { body: '' });
+  }, [setDraft]);
 
   useEffect(() => {
     if (autoFocus && !restored && textareaRef.current) {
@@ -23,7 +28,7 @@ export function CommentForm(props: CommentFormProps) {
   }, [autoFocus, restored]);
 
   const handleCancel = () => {
-    setBody('');
+    setDraft(null);
     onCancel();
   };
 
@@ -33,7 +38,7 @@ export function CommentForm(props: CommentFormProps) {
       return;
     }
     onSubmit(trimmed);
-    setBody('');
+    setDraft(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -59,7 +64,7 @@ export function CommentForm(props: CommentFormProps) {
         <textarea
           ref={textareaRef}
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => setDraft({ body: e.target.value })}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           rows={3}
