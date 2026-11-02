@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
+import { useCommentDraftState } from './comment-drafts';
 
 interface CommentFormProps {
   onSubmit: (body: string) => void;
@@ -7,18 +8,35 @@ interface CommentFormProps {
   submitLabel?: string;
   autoFocus?: boolean;
   lineLabel?: string;
+  draftKey?: string;
+  focusRequest?: object;
 }
 
 export function CommentForm(props: CommentFormProps) {
-  const { onSubmit, onCancel, placeholder = 'Leave a comment', submitLabel = 'Comment', autoFocus = true, lineLabel } = props;
-  const [body, setBody] = useState('');
+  const { onSubmit, onCancel, placeholder = 'Leave a comment', submitLabel = 'Comment', autoFocus = true, lineLabel, draftKey, focusRequest } = props;
+  const [draft, setDraft, restored] = useCommentDraftState<{ body: string; focusRequest?: object } | null>(draftKey, null);
+  const body = draft?.body ?? '';
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const focusedRequestRef = useRef(draft?.focusRequest);
 
   useEffect(() => {
-    if (autoFocus && textareaRef.current) {
-      textareaRef.current.focus();
+    setDraft((previous) => previous ?? { body: '' });
+  }, [setDraft]);
+
+  useEffect(() => {
+    if (autoFocus && textareaRef.current && (focusRequest ? focusedRequestRef.current !== focusRequest : !restored)) {
+      textareaRef.current.focus({ preventScroll: true });
+      if (focusRequest) {
+        focusedRequestRef.current = focusRequest;
+        setDraft((previous) => ({ body: previous?.body ?? '', focusRequest }));
+      }
     }
-  }, [autoFocus]);
+  }, [autoFocus, restored, focusRequest, setDraft]);
+
+  const handleCancel = () => {
+    setDraft(null);
+    onCancel();
+  };
 
   const handleSubmit = () => {
     const trimmed = body.trim();
@@ -26,7 +44,7 @@ export function CommentForm(props: CommentFormProps) {
       return;
     }
     onSubmit(trimmed);
-    setBody('');
+    setDraft(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -37,7 +55,7 @@ export function CommentForm(props: CommentFormProps) {
     }
     if (e.key === 'Escape') {
       e.preventDefault();
-      onCancel();
+      handleCancel();
     }
   };
 
@@ -52,7 +70,7 @@ export function CommentForm(props: CommentFormProps) {
         <textarea
           ref={textareaRef}
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => setDraft((previous) => ({ ...previous, body: e.target.value }))}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           rows={3}
@@ -62,7 +80,7 @@ export function CommentForm(props: CommentFormProps) {
       <div className="flex items-center gap-2 px-1.5 pb-1.5">
         <div className="flex-1" />
         <button
-          onClick={onCancel}
+          onClick={handleCancel}
           className="px-3 py-1.5 text-xs font-medium rounded-md text-text-secondary hover:bg-hover transition-colors cursor-pointer"
         >
           Cancel

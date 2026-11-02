@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useRef } from 'react';
+import { useCommentDraftState } from './comment-drafts';
 import type { CommentThread as CommentThreadType } from './types';
 import { isThreadResolved } from './types';
 import { CommentBubble } from './comment-bubble';
@@ -34,7 +35,8 @@ export function ThreadCard(props: ThreadCardProps) {
     className,
     children,
   } = props;
-  const [showReply, setShowReply] = useState(false);
+  const [showReply, setShowReply, restored] = useCommentDraftState(`reply-open:${thread.id}`, false);
+  const skipInitialFocus = useRef(restored);
   const resolved = isThreadResolved(thread);
 
   return (
@@ -86,6 +88,8 @@ export function ThreadCard(props: ThreadCardProps) {
         showReply ? (
           <div className="px-3 pb-2">
             <CommentForm
+              draftKey={`reply:${thread.id}`}
+              autoFocus={!skipInitialFocus.current}
               onSubmit={(body) => {
                 onReply(body);
                 setShowReply(false);
@@ -98,7 +102,10 @@ export function ThreadCard(props: ThreadCardProps) {
         ) : (
           <div className="px-4 pb-2">
             <button
-              onClick={() => setShowReply(true)}
+              onClick={() => {
+                skipInitialFocus.current = false;
+                setShowReply(true);
+              }}
               className="text-xs text-accent hover:text-accent-hover transition-colors cursor-pointer"
             >
               Reply
