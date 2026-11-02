@@ -1,4 +1,4 @@
-import type { CommentAuthor, CommentSide } from './types';
+import type { CommentAuthor, CommentSide, LineSelection } from './types';
 import { CommentForm } from './comment-form';
 
 interface CommentFormRowProps {
@@ -7,6 +7,7 @@ interface CommentFormRowProps {
   side: CommentSide;
   startLine: number;
   endLine: number;
+  focusRequest: LineSelection;
   currentAuthor: CommentAuthor;
   onSubmit: (filePath: string, side: CommentSide, startLine: number, endLine: number, body: string, author: CommentAuthor) => void;
   onCancel: () => void;
@@ -14,7 +15,7 @@ interface CommentFormRowProps {
 }
 
 export function CommentFormRow(props: CommentFormRowProps) {
-  const { colSpan, filePath, side, startLine, endLine, currentAuthor, onSubmit, onCancel, viewMode } = props;
+  const { colSpan, filePath, side, startLine, endLine, focusRequest, currentAuthor, onSubmit, onCancel, viewMode } = props;
 
   const lineLabel = startLine === endLine
     ? `${startLine}`
@@ -26,6 +27,7 @@ export function CommentFormRow(props: CommentFormRowProps) {
       <CommentForm
         key={draftKey}
         draftKey={draftKey}
+        focusRequest={focusRequest}
         onSubmit={(body) => onSubmit(filePath, side, startLine, endLine, body, currentAuthor)}
         onCancel={onCancel}
         lineLabel={`Add a comment on line${startLine !== endLine ? 's' : ''} ${lineLabel}`}

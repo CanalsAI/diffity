@@ -9,23 +9,29 @@ interface CommentFormProps {
   autoFocus?: boolean;
   lineLabel?: string;
   draftKey?: string;
+  focusRequest?: object;
 }
 
 export function CommentForm(props: CommentFormProps) {
-  const { onSubmit, onCancel, placeholder = 'Leave a comment', submitLabel = 'Comment', autoFocus = true, lineLabel, draftKey } = props;
-  const [draft, setDraft, restored] = useCommentDraftState<{ body: string } | null>(draftKey, null);
+  const { onSubmit, onCancel, placeholder = 'Leave a comment', submitLabel = 'Comment', autoFocus = true, lineLabel, draftKey, focusRequest } = props;
+  const [draft, setDraft, restored] = useCommentDraftState<{ body: string; focusRequest?: object } | null>(draftKey, null);
   const body = draft?.body ?? '';
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const focusedRequestRef = useRef(draft?.focusRequest);
 
   useEffect(() => {
     setDraft((previous) => previous ?? { body: '' });
   }, [setDraft]);
 
   useEffect(() => {
-    if (autoFocus && !restored && textareaRef.current) {
+    if (autoFocus && textareaRef.current && (focusRequest ? focusedRequestRef.current !== focusRequest : !restored)) {
       textareaRef.current.focus({ preventScroll: true });
+      if (focusRequest) {
+        focusedRequestRef.current = focusRequest;
+        setDraft((previous) => ({ body: previous?.body ?? '', focusRequest }));
+      }
     }
-  }, [autoFocus, restored]);
+  }, [autoFocus, restored, focusRequest, setDraft]);
 
   const handleCancel = () => {
     setDraft(null);
@@ -64,7 +70,7 @@ export function CommentForm(props: CommentFormProps) {
         <textarea
           ref={textareaRef}
           value={body}
-          onChange={(e) => setDraft({ body: e.target.value })}
+          onChange={(e) => setDraft((previous) => ({ ...previous, body: e.target.value }))}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           rows={3}

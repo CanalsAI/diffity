@@ -258,6 +258,7 @@ export function renderSplitRows(
             side={props.pendingSelection.side}
             startLine={props.pendingSelection.startLine}
             endLine={props.pendingSelection.endLine}
+            focusRequest={props.pendingSelection}
             currentAuthor={props.currentAuthor}
             onSubmit={props.onAddThread}
             onCancel={props.onCancelPending}
