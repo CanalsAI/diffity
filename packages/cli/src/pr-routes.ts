@@ -119,6 +119,16 @@ async function isCheckedOutElsewhere(clone: string, branch: string, path: string
     entry.includes(`\nbranch refs/heads/${branch}`) && !entry.startsWith(`worktree ${path}\n`));
 }
 
+// The Diff Viewer frame (the one in the deployed workspace image) keeps a `ref` only if it
+// is `origin/HEAD` or the base it computes itself, and it computes none for a PR that
+// targets the default branch, so it falls back to "All changes", which is empty in a
+// clean worktree. Address the default branch as `origin/HEAD` (the same commit) so
+// those PRs open with their diff. Once the frame keeps any explicit ref this goes away.
+async function frameRefFor(clone: string, ref: string): Promise<string> {
+  const defaultRef = await git(clone, ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']).catch(() => '');
+  return defaultRef === ref ? 'origin/HEAD' : ref;
+}
+
 async function ensureInstance(worktree: string, ref: string): Promise<number> {
   const repoHash = createHash('sha256').update(worktree).digest('hex').slice(0, 12);
   const existing = findInstanceForRepo(repoHash);
@@ -164,9 +174,9 @@ function openPr(owner: string, repo: string, number: number): Promise<OpenedPr> 
       throw new Error(`No local clone of ${owner}/${repo} found next to this repository`);
     }
     const ref = `origin/${info.baseRefName}`;
-    const path = await prepareWorktree(clone, repo, number, info);
+    const [path, frameRef] = await Promise.all([prepareWorktree(clone, repo, number, info), frameRefFor(clone, ref)]);
     const port = await ensureInstance(path, ref);
-    return { port, ref, checkout: basename(path) };
+    return { port, ref: frameRef, checkout: basename(path) };
   })().finally(() => inFlight.delete(key));
   inFlight.set(key, job);
   return job;
